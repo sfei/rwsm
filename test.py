@@ -1,4 +1,8 @@
-import os, sys, helpers, arcpy
+import os, sys, helpers, rwsm, arcpy, datetime, logging
+
+LOG_LEVEL = logging.DEBUG  # Only show debug and up
+# LOG_LEVEL = logging.NOTSET # Show all messages
+# LOG_LEVEL = logging.CRITICAL # Only show critical messages
 
 def test_config_read():
     # TODO: Identify if workspace needs to be a required field
@@ -131,3 +135,154 @@ def check_shape_type():
     print watersheds.datatype
     print describe.shapeType
 
+def watershed():
+    CONFIG_FILE_NAME = "rwsm.ini"
+    if os.path.isfile( CONFIG_FILE_NAME ):
+        config = helpers.load_config( CONFIG_FILE_NAME )
+    watersheds = config.get("RWSM", "watersheds")
+    watersheds_field = config.get("RWSM", "watersheds_field")
+    ws = rwsm.Watershed(watersheds,watersheds_field)
+
+def dissolve():
+    # Load values from config file
+    CONFIG_FILE_NAME = "rwsm.ini"
+    if os.path.isfile( CONFIG_FILE_NAME ):
+        config = helpers.load_config( CONFIG_FILE_NAME )
+    workspace = config.get("RWSM", "workspace")
+    watersheds = config.get("RWSM", "watersheds")
+    watersheds_field = config.get("RWSM", "watersheds_field")
+    # out_name = config.get("RWSM", "out_name")
+
+    # Create workspace
+    helpers.init_workspace( workspace )
+
+    # Instantiate watershed, run dissolve
+    ws = rwsm.Watershed(watersheds,watersheds_field)
+    ws.dissolve()
+
+    # Save to output
+    #out_file = os.path.join(r'C:\Users\LorenzoF\Documents\RWSM\rwsm',"watershed-dissolve-test.lyrx")
+    #SaveToLayerFile_management(ws,out_file,True)
+    print "Dissolve test complete!"
+
+def clip_land_use():
+    """Test land use clip analysis."""
+
+    # Initialize logger for output.
+    logger = helpers.get_logger( LOG_LEVEL )
+
+    # Load values from config file
+    CONFIG_FILE_NAME = "rwsm.ini"
+    if os.path.isfile( CONFIG_FILE_NAME ):
+        config = helpers.load_config( CONFIG_FILE_NAME )
+    workspace = config.get("RWSM", "workspace")
+    watersheds_file_name = config.get("RWSM", "watersheds")
+    watersheds_field = config.get("RWSM", "watersheds_field")
+    land_use_file_name = config.get("RWSM", "land_use")
+
+    # Create workspace
+    ( temp_file_name, out_file_name ) = helpers.init_workspace( workspace )
+
+    # Instantiate watershed, run dissolve
+    logger.info( 'Dissolving watershed...' )
+    watersheds = rwsm.Watershed( watersheds_file_name, watersheds_field )
+    dissolved_watersheds = watersheds.dissolve()
+    logger.info( 'watershed dissolved!' )
+
+    # Change to temporary workspace
+    arcpy.env.workspace = temp_file_name
+
+    # Iterate through watersheds, run precipitation clip analysis
+    logger.info( 'Iterating watersheds...')
+    with arcpy.da.SearchCursor( dissolved_watersheds, (watersheds_field, "SHAPE@") ) as cursor:
+        for watershed in cursor:
+            
+            watershed_name = watershed[0]
+            watershed_val = watershed[1]
+
+            logger.info('Clipping land use to watershed {}...'.format(watershed_name))
+
+            # Remove illegal characters from watershed name
+            watershed_name_tmp = ''.join( watershed_name.split() )
+            for char in '!@#$%^&*()-+=,<>?/\~`[]{}.':
+                watershed_name_tmp = watershed_name_tmp.replace(char, '')
+            watershed_name = watershed_name_tmp
+            
+            arcpy.Clip_analysis( 
+                in_features = land_use_file_name, 
+                clip_features = watershed_val, 
+                out_feature_class = "lu_" + watershed_name
+            )
+
+            helpers.fasterJoin(
+                "lu_" + watershed_name, # "lu_"+wname
+                config.get("RWSM","land_use_field"), # luField
+                config.get("RWSM","land_use_LU"), # lookupLU
+                 config.get("RWSM","land_use_LU_code_field"), # lookupLUcodeField
+                (
+                    config.get("RWSM","land_use_LU_bin_field"), # lookupLUbinField
+                    config.get("RWSM","land_use_LU_desc_field") # lookupLUdescField
+                ) 
+            )
+            clipLU = arcpy.Dissolve_management(
+                "lu_" + watershed_name, 
+                "luD_" + watershed_name, 
+                [
+                    config.get("RWSM","land_use_field"), 
+                    config.get("RWSM","land_use_LU_desc_field"), 
+                    config.get("RWSM","land_use_LU_bin_field")
+                ], 
+                '', 
+                'SINGLE_PART'
+            )
+
+            logger.info( 'Land Use clipped!')
+
+def clip_precipitation():
+    """Test clip precipitation to watershed computation."""
+
+    # Load values from config file
+    CONFIG_FILE_NAME = "rwsm.ini"
+    if os.path.isfile( CONFIG_FILE_NAME ):
+        config = helpers.load_config( CONFIG_FILE_NAME )
+    workspace = config.get("RWSM", "workspace")
+    watersheds_file_name = config.get("RWSM", "watersheds")
+    watersheds_field = config.get("RWSM", "watersheds_field")
+    precepitation_file_name = config.get("RWSM", "precipitation_file_name")
+
+    # Create workspace
+    helpers.init_workspace( workspace )
+
+    # Instantiate watershed, run dissolve
+    watersheds = rwsm.Watershed( watersheds_file_name, watersheds_field )
+    dissolved_watersheds = ws.dissolve()
+
+    # Load precepitation raster.
+    precepitation_raster = Raster(precipitation_file_name)
+
+    # Iterate through watersheds, run precipitation clip analysis
+    with arcpy.da.SearchCursor( dissolved_watersheds, (watersheds_field, "SHAPE@") ) as cursor:
+        for watershed in cursor:
+            # Load and clip slope
+
+            clipINT = arcpy.Intersect_analysis([clipLU, clipGEOL], 'int_'+wname, "NO_FID")
+            clipXINT = arcpy.MultipartToSinglepart_management(clipINT, 'intX_'+wname)
+
+            # Eliminate Small Polys
+            # INT = base.elimSmallPolys(clipXINT, workspace + '\\' + resultsName + '\\' + wname, 0.005)
+            """Runs Eliminate on all features in fc with area less than clusTol.
+            This merges all small features to larger adjacent features."""
+            lyr = arcpy.MakeFeatureLayer_management(fc)
+            arcpy.SelectLayerByAttribute_management(lyr, "NEW_SELECTION", '"Shape_Area" < ' + str(clusTol))
+            out = arcpy.Eliminate_management(lyr, outName, 'LENGTH')
+            arcpy.Delete_management(lyr)
+
+            zonal_stats = ZonalStatisticsAsTable()
+
+
+    
+    return True
+
+def clip_soils():
+
+    return True
