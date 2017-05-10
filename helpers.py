@@ -1,4 +1,4 @@
-import os, sys, csv, ConfigParser, arcpy, datetime, logging
+import os, sys, csv, ConfigParser, arcpy, arcinfo, datetime, logging
 
 LOG_LEVEL = logging.DEBUG  # Only show debug and up
 # LOG_LEVEL = logging.NOTSET # Show all messages
@@ -9,7 +9,37 @@ def get_logger( logger_level ):
     logger = logging.getLogger(__name__)
     return logger
 
+# TODO: Allow function to accept slope raster OR file name
+def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
+    """Populate slop biin lookup structure"""
+    slope_bins_strs = []
+    slope_bins = []
+    slope_raster = arcpy.sa.Raster( slope_file_name )
+    slope_raster_max = int(slope_raster.maximum)
+    with open( runoff_coeff_file_name, 'rb' ) as csvfile:
+        reader = csv.reader( csvfile )
+        next(reader, None)  # skip the headers
+        for row in reader:
+            slope = row[1]
+            if slope not in slope_bins_strs:
+                slope_bins_strs.append( slope )
+    # Convert strings to numeric values
+    for slope_bin in slope_bins_strs:
+        if "+" in slope_bin:
+            slope_bins.append( [int(slope_bin.strip("+").strip("%")), slope_raster_max] )
+        else:
+            slope_bins.append( map(lambda x: int(x), slope_bin.strip("%").split("-")) )
+        
+    return slope_bins
+
 def load_ruoff_coeff_lu( file_name ):
+    slope_bins = []
+    with open( file_name, 'rb' ) as csvfile:
+        reader = csv.reader( csvfile )
+        for row in reader:
+            slope = row[1]
+            if slope not in slope_bins:
+                slope_bins.append( slope )
     return 0
 
 # Read parameter values from configuration file
@@ -123,3 +153,77 @@ def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None):
             for f in fields:
                 row[fields.index(f) + 1] = joinDict[f].get(row[0], None)
             cursor.updateRow(row)
+
+def get_unique_field_vals(file_name,field):
+    """Get unique values for field in shapefile"""
+    values = [row[0] for row in arcpy.da.SearchCursor(file_name, (field))]
+    unique_values = list(set(values))
+
+    return unique_values
+
+def compare_unique_field_vals(file_name1,field1,file_name2,field2):
+    """Display intersection and difference for two sets"""
+    set_1 = get_unique_field_vals(file_name1,field1)
+    set_2 = get_unique_field_vals(file_name2,field2)
+
+    print "{} intersected with {}".format(file_name1,file_name2)
+    set_intersection = set(set_1).intersection(set_2)
+    for val in set_intersection:
+        print val
+    print "------------------------"
+    print "Total: {}\n\n".format(len(set_intersection))
+
+    print "{} - {}".format(file_name1,file_name2)
+    set_difference = set(set_1).difference(set_2)
+    for val in set_difference:
+        print val
+    print "------------------------"
+    print "Total: {}\n\n".format(len(set_difference))
+
+def add_descriptions_to_land_use_shp(lu_file_name,lu_field,shp_file_name):
+    """Function for adding land use description field to shape file."""
+    
+    # Read in lookup table, create dictionary
+    land_use_LU = {}
+    with open(lu_file_name,'rb') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row[3] not in land_use_LU.keys():
+                land_use_LU[ row[3] ] = row[4]
+
+    # create UpdateCursor instance, append lookup desscription as l_use_desc field based on l_use_code value found.
+    arcpy.AddField_management(shp_file_name, "l_use_desc", "TEXT")
+    with arcpy.da.UpdateCursor(shp_file_name, ["l_use_code","l_use_desc"]) as cursor:
+        for row in cursor:
+            row[1] = land_use_LU[str(row[0])]
+            # print row
+            
+            # Add try / catch to identify which rows are not updated.
+
+            # cursor.updateRow(row)
+
+def elimSmallPolys(fc, outName, clusTol):
+    """Runs Eliminate on all features in fc with area less than clusTol.
+    This merges all small features to larger adjacent features."""
+    lyr = arcpy.MakeFeatureLayer_management(fc)
+    arcpy.SelectLayerByAttribute_management(lyr, "NEW_SELECTION", '"Shape_Area" < ' + str(clusTol))
+    out = arcpy.Eliminate_management(lyr, outName, 'LENGTH')
+    arcpy.Delete_management(lyr)
+    return out
+
+def rasterAvgs(INT, dem, rname, wname):
+    arcpy.CheckOutExtension('Spatial')
+    #zstatdem = ZonalStatisticsAsTable(INT, 'uID', dem, rname + "_" + wname, "TRUE", "MEAN")
+    zstatdem = arcpy.sa.ZonalStatisticsAsTable(INT, 'uID', dem, rname + "_" + wname, "DATA", "MEAN")
+    meanField = rname + "Mean"
+    fasterJoin(INT, 'uID', zstatdem, 'uID', ("MEAN",), (meanField,))
+    sel = arcpy.MakeFeatureLayer_management(INT, "omit_"+rname+"_"+wname, '"{0}" IS NULL'.format(meanField))
+    if getCountInt(sel) > 0:
+        selpt = arcpy.FeatureToPoint_management(sel, "omit_"+rname+"_centroid_"+wname)
+        selex = ExtractValuesToPoints(selpt, dem, "omit_"+rname+"_val_"+wname)
+        arcpy.AddJoin_management(sel, 'uID', selex, 'uID')
+        meanFieldJ = wname + "." + meanField
+        rastervaluJ = "omit_"+rname+"_val_"+wname + ".RASTERVALU"
+        arcpy.CalculateField_management(sel, meanFieldJ, '['+rastervaluJ+']', 'VB')
+    arcpy.Delete_management(sel)
+    arcpy.CheckInExtension('Spatial')

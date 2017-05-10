@@ -20,6 +20,15 @@ class Watershed(object):
         
         return self.dissolved
 
+class Land_Use(object):
+    def __init__(self,file_name,field):
+        self.file_name = file_name,
+        self.field = field
+
+    def create_lookup(self):
+        return True
+
+
 def clip_land_use():
     return true
 
