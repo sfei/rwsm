@@ -82,7 +82,7 @@ def init_workspace( workspace ):
     if create_new_folder:
         workspace += '_{}_{}'.format( date, time)
         if not os.path.exists(workspace):
-            logger.info( "Creating RWSM workspace directory {}...".format(workspace) )
+            logger.info( "Creating RWSM temp and output directory in workspace '{}'...".format(workspace) )
             os.makedirs( workspace )
 
     # Initiate workspace using output folder name.
@@ -215,15 +215,18 @@ def rasterAvgs(INT, dem, rname, wname):
     arcpy.CheckOutExtension('Spatial')
     #zstatdem = ZonalStatisticsAsTable(INT, 'uID', dem, rname + "_" + wname, "TRUE", "MEAN")
     zstatdem = arcpy.sa.ZonalStatisticsAsTable(INT, 'uID', dem, rname + "_" + wname, "DATA", "MEAN")
-    meanField = rname + "Mean"
+    meanField = rname + "_mean"
     fasterJoin(INT, 'uID', zstatdem, 'uID', ("MEAN",), (meanField,))
     sel = arcpy.MakeFeatureLayer_management(INT, "omit_"+rname+"_"+wname, '"{0}" IS NULL'.format(meanField))
     if getCountInt(sel) > 0:
         selpt = arcpy.FeatureToPoint_management(sel, "omit_"+rname+"_centroid_"+wname)
-        selex = ExtractValuesToPoints(selpt, dem, "omit_"+rname+"_val_"+wname)
+        selex = arcpy.sa.ExtractValuesToPoints(selpt, dem, "omit_"+rname+"_val_"+wname)
         arcpy.AddJoin_management(sel, 'uID', selex, 'uID')
         meanFieldJ = wname + "." + meanField
         rastervaluJ = "omit_"+rname+"_val_"+wname + ".RASTERVALU"
         arcpy.CalculateField_management(sel, meanFieldJ, '['+rastervaluJ+']', 'VB')
     arcpy.Delete_management(sel)
     arcpy.CheckInExtension('Spatial')
+
+def getCountInt(fc):
+    return int(arcpy.GetCount_management(fc).getOutput(0))
