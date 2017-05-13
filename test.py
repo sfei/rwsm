@@ -1,4 +1,4 @@
-import os, sys, helpers, rwsm, arcpy, datetime, logging
+import os, sys, helpers, rwsm, arcpy, datetime, logging, numpy
 
 LOG_LEVEL = logging.DEBUG  # Only show debug and up
 # LOG_LEVEL = logging.NOTSET # Show all messages
@@ -220,11 +220,11 @@ def clip_land_use():
             )
 
             helpers.fasterJoin(
-                "lu_" + watershed_name, # Watershed name, feature class (fc)
-                config.get("RWSM","land_use_field"), # luField, fcField
-                config.get("RWSM","land_use_LU"), # lookupLU, joinFC
-                 config.get("RWSM","land_use_LU_code_field"), # lookupLUcodeField, joinFCField
-                ( # fields
+                fc = "lu_" + watershed_name, # Watershed name, feature class (fc)
+                fcField = config.get("RWSM","land_use_field"), # luField, fcField
+                joinFC = config.get("RWSM","land_use_LU"), # lookupLU, joinFC
+                joinFCField = config.get("RWSM","land_use_LU_code_field"), # lookupLUcode_field, joinFCField
+                fields = ( # fields
                     config.get("RWSM","land_use_LU_bin_field"), # lookupLUbinField
                     config.get("RWSM","land_use_LU_desc_field") # lookupLUdescField
                 ) 
@@ -318,7 +318,7 @@ def run_analysis():
     land_use_file_name = config.get("RWSM", "land_use")
 
     # Create workspace
-    ( temp_file_name, out_file_name ) = helpers.init_workspace( workspace )
+    ( temp_file_name, out_file_name, workspace ) = helpers.init_workspace( workspace )
 
     # Instantiate watershed, run dissolve
     logger.info( 'Dissolving watershed...' )
@@ -353,6 +353,7 @@ def run_analysis():
 
     # Run-off Coefficient (CSV or Table)
     runoff_coeff_file_name = config.get("RWSM","runoff_coeff_file_name")
+    runoff_coeff_field = config.get("RWSM","runoff_coeff_field")
 
     # Populate Slope Bins data structure ------------------------------------------
     # TODO: Allow helpers.load_slope_bins to accept raster too.
@@ -394,14 +395,14 @@ def run_analysis():
 
             # Adds land use lookup bin and description
             helpers.fasterJoin(
-                "lu_" + watershed_name, # Watershed name, feature class (fc)
-                land_use_field, # luField, fcField
-                land_use_LU, # lookupLU, joinFC
-                land_use_LU_code_field, # lookupLUcodeField, joinFCField
-                ( # fields
+                fc = "lu_" + watershed_name,
+                fcField = land_use_field, # luField
+                joinFC = land_use_LU, # lookupLU
+                joinFCField = land_use_LU_code_field, # lookupLUcode_field
+                fields = ( # fields
                     land_use_LU_bin_field, # lookupLUbinField
                     land_use_LU_desc_field # lookupLUdescField
-                ) 
+                )
             )
 
             # Dissolve land use
@@ -529,4 +530,62 @@ def run_analysis():
 
                     cursor.updateRow(row)
 
+            # Add land use code fields ---------------------------------------------
+            # TODO: Update this so it doesn't use codes, but combination of slope bin, soils, and land use category
+            logger.info('Adding land use fields...')
+            code_field = 'code_' + land_use_LU_bin_field
+            base_field = 'runoff_vol_' + runoff_coeff_field
+            arcpy.AddField_management(intersect, code_field, "DOUBLE")
+            arcpy.AddField_management(intersect, base_field, "DOUBLE")
+            logger.info('...land use fields added!')
 
+            # Write in values for new fields --------------------------------------
+            logger.info('Adding land use code to output...')
+            # TODO: Phase out slope bin codes in general
+            slope_bins_w_codes = list(slope_bins)
+            map(lambda x: x.append( ( slope_bins_w_codes.index(x) + 1 ) * 100 ), slope_bins_w_codes )
+            with arcpy.da.UpdateCursor(intersect, ('soils', land_use_LU_bin_field, slope_bin_field, code_field)) as cursor:
+                for row in cursor:
+                    slpBin1 = int(row[2].split('-')[0]) if row[2] != 'NaN' else 0 # TODO: Identify why NaNs exist
+                    slpBinVal = [k[2] for k in slope_bins_w_codes if k[0] == slpBin1][0]
+                    row[3] = helpers.calculateCode(slpBinVal, row[0], row[1], 'soils')
+                    cursor.updateRow(row)
+            logger.info('...land use codes added!')
+
+            # Join runoff coeff lookup table and calculate runoff volume
+            # logger.info("\nfc: {}\nfcField: {}\njoinFC: {}\njoinFCField: {}\nfields: {}".format(intersect,code_field,runoff_coeff_file_name,'code',(runoff_coeff_field,)))
+            helpers.fasterJoin(
+                fc = intersect,
+                fcField = code_field, 
+                joinFC = runoff_coeff_file_name, 
+                joinFCField = 'code', 
+                fields = (runoff_coeff_field,),
+                convertCodes = True # TODO: Find alternative for flagging string to float/int conversion
+            )
+
+            # Convert precipitation from mm to m and multiple by runoff vol.
+            logger.info('Converting precipitation...')
+            with arcpy.da.UpdateCursor(intersect, ['SHAPE@AREA', runoff_coeff_field, base_field, 'precipitation_mean'],
+                                           '"{0}" is not null'.format(runoff_coeff_field)) as cursor:
+                    for row in cursor:
+                        # convert ppt from mm to m and multiply by area and runoff coeff
+                        row[2] = (row[3] / 1000.0) * row[0] * row[1]
+                        cursor.updateRow(row)
+            logger.info('...precipitation converted!')
+
+def test_numpy():
+    fc = "C:\\RWSM\\rwsm_20170511_122532\\output_20170511_122532.gdb\\BelmontCreek"
+    rc_file = "C:\Users\LorenzoF\Documents\RWSM\Input_Data\RunoffCoeff.csv"
+    rc_table = numpy.genfromtxt( rc_file, delimiter=",", names=True, dtype=None)
+    rc_lookup = dict(zip(rc_table[:]['code'],rc_table[:]['South_Pen']))
+    fc_table = arcpy.da.FeatureClassToNumPyArray( fc, ["OID@","code_LULOOKUP"])
+
+    rc_field = []
+    for (oid, code) in fc_table:
+        # numpy.append( x, rc_lookup[x[1]] )
+        # print rc_lookup[code]
+        rc_field.append( ( oid, code, rc_lookup[code] ) )
+    
+    arcpy.da.ExtendTable(fc,"OID@",numpy.asarray(rc_field)
+    return rc_field
+        

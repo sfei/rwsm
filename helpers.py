@@ -11,7 +11,7 @@ def get_logger( logger_level ):
 
 # TODO: Allow function to accept slope raster OR file name
 def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
-    """Populate slop biin lookup structure"""
+    """Populate slope bin lookup structure."""
     slope_bins_strs = []
     slope_bins = []
     slope_raster = arcpy.sa.Raster( slope_file_name )
@@ -32,15 +32,32 @@ def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
         
     return slope_bins
 
-def load_ruoff_coeff_lu( file_name ):
-    slope_bins = []
+# TODO: Check if we want to dynamically apply coefficient fields based on location category
+def load_runoff_coeff_lu( file_name, coefficient_field ):
+    """Helper function for populating land use data structure"""
+
+    # Initialize data structure, dictionary with three valued tuples
+    runoff_lu = {
+        "sets" : {},
+        "codes" : {}
+    }
+
+    # Read and loop through CSV, populate structure
     with open( file_name, 'rb' ) as csvfile:
         reader = csv.reader( csvfile )
+        headers = reader.next()
+        coeff_index = headers.index( coefficient_field )
         for row in reader:
             slope = row[1]
-            if slope not in slope_bins:
-                slope_bins.append( slope )
-    return 0
+            soil = row[2]
+            category = row[3]
+            code = row[7]
+            coeff = row[ coeff_index ]
+            runoff_set = ( slope, soil, category )
+            if runoff_set not in runoff_lu["sets"].keys():
+                runoff_lu["sets"][runoff_set] = coeff
+            runoff_lu["codes"][code] = coeff
+    return runoff_lu
 
 # Read parameter values from configuration file
 def load_config( file_name ):
@@ -101,11 +118,11 @@ def init_workspace( workspace ):
     arcpy.CreateFileGDB_management( workspace, out_file_name )
     logger.info( '{} created!'.format( out_file_name ) )
 
-    return (temp_file_name,out_file_name)
+    return (temp_file_name,out_file_name,workspace)
 
 
 
-def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None):
+def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None, convertCodes=False):
     # Create joinList, which is a list of [name, type] for input fields
     listfields = arcpy.ListFields(joinFC)
     joinList = [[k.name, k.type] for k in listfields if k.name in fields]
@@ -145,7 +162,10 @@ def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None):
     with arcpy.da.SearchCursor(joinFC, sFields) as cursor:
         for row in cursor:
             for f in fields:
-                joinDict[f][row[0]] = row[fields.index(f) + 1]
+                if convertCodes:
+                    joinDict[f][float(row[0])] = row[fields.index(f) + 1]
+                else:
+                    joinDict[f][row[0]] = row[fields.index(f) + 1]
 
     uFields = (fcField, ) + fieldsNewNames
     with arcpy.da.UpdateCursor(fc, uFields) as cursor:
@@ -230,3 +250,22 @@ def rasterAvgs(INT, dem, rname, wname):
 
 def getCountInt(fc):
     return int(arcpy.GetCount_management(fc).getOutput(0))
+
+# TODO: This will be phased out once land use lookups are indexed by tuples
+def calculateCode(slpValue, geolValue, luValue, geolName):
+    """Calculates code for each unique land unit, used in runoff coeff lookup table"""
+    if geolName == 'geol':
+        geolValues = {'Franciscan': 10, 'Great Valley': 20, 'Quaternary': 30, 'Salinian': 40, 'Tertiary': 50, 'Water': 60}
+    elif geolName == 'soils':
+        geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
+    if geolValue in geolValues:
+        geolValueOut = geolValues[geolValue]
+    else:
+        geolValueOut = 0
+    if not slpValue:
+        slpValue = 0
+    if not luValue:
+        luValue = 0.0
+    #else:
+        #luValue = float(str(luValue)[0] + '.' + str(luValue)[1:])  # convert luValue to decimal with highest digit as ones place
+    return slpValue + geolValueOut + luValue
