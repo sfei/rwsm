@@ -1,4 +1,4 @@
-import os, sys, helpers, arcpy, datetime, logging, numpy
+import os, sys, csv, helpers, arcpy, datetime, logging, numpy
 
 LOG_LEVEL = logging.DEBUG  # Only show debug and up
 # LOG_LEVEL = logging.NOTSET # Show all messages
@@ -32,12 +32,141 @@ class Land_Use(object):
     def create_lookup(self):
         return True
 
+class Stats_Writer(object):
+    """Object for writing watershed statistics tables"""
 
-def clip_land_use():
-    return true
+    def __init__( self, config, slope_bins ):
+        self.config = config
+        self.slope_bins = self.slope_bins_to_strs( sorted(slope_bins) )
+        self.load_soil_and_land_use_values()
+        self.ws_headers = self.get_ws_stats_headers()
+        self.ws_stats = []
+        
+    
+    def slope_bins_to_strs(self, slope_bins):
+        tmp = []
+        for slope_bin in slope_bins:
+            tmp.append( str( slope_bin[0] ) + "-" + str( slope_bin[1] ) )
+        return tmp
 
-def clip_soils():
-    return true
+    def load_soil_and_land_use_values(self):
+        """Read in runoff coefficient table, generate list of values and headers"""
+        soil_types = []
+        land_use_classes = []
+
+        with open( self.config.get("RWSM","runoff_coeff_file_name"), 'rb' ) as csvfile:
+            reader = csv.reader( csvfile )
+            rc_headers = reader.next()
+
+            # Gather indecies
+            #slope_idx = rc_headers.index('slope') # TODO: This probably isn't necessary
+            # TODO: Load string values from config file
+            soil_idx = rc_headers.index('Soil')
+            land_use_idx = rc_headers.index('LU')
+
+            # Iterate through csv file, collect soil and land use values
+            for row in reader:
+                soil_type = row[ soil_idx ]
+                land_use_class = row[ land_use_idx ]
+
+                if soil_type not in soil_types:
+                    soil_types.append( soil_type )
+                
+                if land_use_class not in land_use_classes:
+                    land_use_classes.append( land_use_class )
+        
+        self.soil_types = sorted(soil_types)
+        self.land_use_classes = sorted(land_use_classes)
+
+    def get_ws_stats_headers(self):
+        ws_headers = []
+        ws_headers.append( "Watershed" )
+        ws_headers.append( "Tot. Area (km2)" )
+        ws_headers.append( "Tot. Runoff Vol. (m3)" )
+        ws_headers.append( "Average Weighted Precipitation (mm)" )
+        ws_headers.append( "Average Weighted Slope (%)" )
+
+        for slope_bin in self.slope_bins:
+            ws_headers.append( "Slope Bin " + slope_bin + " % Tot." )
+
+        for soil_type in self.soil_types:
+            ws_headers.append( "Soil Type " + soil_type + " % Tot." )
+        
+        for land_use in self.land_use_classes:
+            ws_headers.append( "LU " + land_use + " Tot. Area (km2)" )
+
+        for land_use in self.land_use_classes:
+            ws_headers.append( "LU " + land_use + " Runoff Vol. (m3)" )
+
+        for land_use in self.land_use_classes:
+            ws_headers.append( "LU " + land_use + " % WS Area" )
+
+        for land_use in self.land_use_classes:
+            ws_headers.append( "LU " + land_use + " % WS Runoff Vol. (m3)" )
+
+        return ws_headers
+
+        
+    def add_fc_table(self, watershed_name, fc_table):
+        """Add feature class data to values data structure"""
+
+        # List to be written as a row in watershed statistics data
+        ws_row = []
+
+        # Watershed Name
+        ws_row.append( watershed_name )
+
+        # Tot. Area (km2)
+        total_area = numpy.sum( fc_table[ "SHAPE@AREA" ] )
+        ws_row.append( total_area )
+
+        # Tot. Runoff Vol. (m3)
+        tot_runoff_vol = numpy.sum( fc_table[ "precipitation_mean" ] * fc_table[ "SHAPE@AREA" ] )
+        ws_row.append( tot_runoff_vol )
+
+        # Average Weighted Precipitation (mm)
+        ws_row.append( tot_runoff_vol / total_area )
+
+        # Average Weighted Slope (%)
+        # TODO: Verify this computation
+        ws_row.append( numpy.sum( fc_table[ "slope_mean" ] * fc_table[ "SHAPE@AREA" ] ) / total_area )
+
+        # Slope Bin Percent (%) Totals
+        slope_bin_field = self.config.get("RWSM","slope_bin_field")
+        for slope_bin in self.slope_bins:
+            ws_row.append( numpy.sum( fc_table[ fc_table[ slope_bin_field ] == slope_bin ][ "SHAPE@AREA" ] ) / total_area )
+
+        # Soil Type Percent (%) Totals
+        soils_type_field = self.config.get("RWSM","soils_bin_field")
+        for soil_type in self.soil_types:
+            ws_row.append( numpy.sum( fc_table[ fc_table[ soils_type_field ] == soil_type ][ "SHAPE@AREA" ] ) / total_area )
+
+        # Land Use - Total areas (km2)
+        land_use_LU_class_field = self.config.get("RWSM","land_use_LU_class_field")
+        for land_use_class in self.land_use_classes:
+            ws_row.append( numpy.sum( fc_table[ fc_table[ land_use_LU_class_field ] == land_use_class ][ "SHAPE@AREA" ] ) )
+
+        # Land Use - Runoff Vol. (m3)
+        for land_use_class in self.land_use_classes:
+            ws_row.append( numpy.sum( fc_table[ fc_table[ land_use_LU_class_field ] == land_use_class ][ "SHAPE@AREA" ] * fc_table[ fc_table[ land_use_LU_class_field ] == land_use_class ][ "precipitation_mean" ]) )
+
+        # Land Use - Percent (%) WS Area
+        for land_use_class in self.land_use_classes:
+            ws_row.append( numpy.sum( fc_table[ fc_table[ land_use_LU_class_field ] == land_use_class ][ "SHAPE@AREA" ] ) / total_area )
+
+        # Land Use - Percent (%) WS Runoff Vol. (m3)
+        for land_use_class in self.land_use_classes:
+            ws_row.append( numpy.sum( fc_table[ fc_table[ land_use_LU_class_field ] == land_use_class ][ "SHAPE@AREA" ] * fc_table[ fc_table[ land_use_LU_class_field ] == land_use_class ][ "precipitation_mean" ] ) / tot_runoff_vol )
+
+        self.ws_stats.append( ws_row )
+
+
+    def write_ws_stats_table(self, output_file_name):
+        with open( output_file_name, 'wb' ) as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow( self.ws_headers )
+            for row in self.ws_stats:
+                writer.writerow( row )
 
 def run_analysis():
     """Test land use clip analysis."""
@@ -54,7 +183,6 @@ def run_analysis():
     # watersheds_file_name = config.get("RWSM", "watersheds")
     watersheds_file_name = config.get("RWSM", "watersheds_calibration")
     watersheds_field = config.get("RWSM", "watersheds_field")
-    land_use_file_name = config.get("RWSM", "land_use")
 
     # Create workspace
     ( temp_file_name, out_file_name, workspace ) = helpers.init_workspace( workspace )
@@ -72,16 +200,19 @@ def run_analysis():
     land_use_descriptions = []
 
     # Gather configuration file values --------------------------------------------
-    # Land Use (Raster)
+    # Land Use (Shapefile)
+    land_use_file_name = config.get("RWSM", "land_use")
     land_use_field = config.get("RWSM","land_use_field")
     land_use_LU = config.get("RWSM","land_use_LU")
     land_use_LU_code_field = config.get("RWSM","land_use_LU_code_field")
     land_use_LU_bin_field = config.get("RWSM","land_use_LU_bin_field")
     land_use_LU_desc_field = config.get("RWSM","land_use_LU_desc_field")
+    land_use_LU_class_field = config.get("RWSM","land_use_LU_class_field")
 
     # Soils (Shapefile)
     soils_file_name = config.get("RWSM","soils_file_name")
     soils_field = config.get("RWSM","soils_field")
+    soils_bin_field = config.get("RWSM","soils_bin_field")
 
     # Slope (Raster)
     slope_file_name = config.get("RWSM","slope_file_name")
@@ -101,6 +232,9 @@ def run_analysis():
 
     # Get precipitation raster
     precipitation_raster = arcpy.sa.Raster( precipitation_file_name )
+
+    # Setup statistics output object ----------------------------------------------
+    writer = Stats_Writer( config, slope_bins )
 
 
     # Iterate through watersheds, run precipitation clip analysis
@@ -141,7 +275,8 @@ def run_analysis():
                 joinFCField = land_use_LU_code_field, # lookupLUcode_field
                 fields = ( # fields
                     land_use_LU_bin_field, # lookupLUbinField
-                    land_use_LU_desc_field # lookupLUdescField
+                    # land_use_LU_desc_field, # lookupLUdescField
+                    land_use_LU_class_field
                 )
             )
 
@@ -152,8 +287,9 @@ def run_analysis():
                 out_feature_class = "luD_" + watershed_name,
                 dissolve_field = [
                     land_use_field, 
-                    land_use_LU_desc_field, 
-                    land_use_LU_bin_field
+                    # land_use_LU_desc_field, 
+                    land_use_LU_bin_field,
+                    land_use_LU_class_field
                 ], 
                 statistics_fields = "", 
                 multi_part = "SINGLE_PART"
@@ -168,11 +304,11 @@ def run_analysis():
                 break
 
             # Iterate through dissolved land use file, gather descriptions
-            logger.info('Gathering descriptions...')
-            with arcpy.da.SearchCursor( land_use_clip, (land_use_field, land_use_LU_desc_field) ) as cursor:
-                for row in cursor:
-                    land_use_descriptions.append( [ row[0], row[1] ] )
-            logger.info('...descriptions gathered!')
+            # logger.info('Gathering descriptions...')
+            # with arcpy.da.SearchCursor( land_use_clip, (land_use_field, land_use_LU_desc_field) ) as cursor:
+            #     for row in cursor:
+            #         land_use_descriptions.append( [ row[0], row[1] ] )
+            # logger.info('...descriptions gathered!')
 
             # Soils ---------------------------------------------------------------
             logger.info('Clipping soils...')
@@ -284,11 +420,11 @@ def run_analysis():
             # TODO: Phase out slope bin codes in general
             slope_bins_w_codes = list(slope_bins)
             map(lambda x: x.append( ( slope_bins_w_codes.index(x) + 1 ) * 100 ), slope_bins_w_codes )
-            with arcpy.da.UpdateCursor(intersect, ('soils', land_use_LU_bin_field, slope_bin_field, code_field)) as cursor:
+            with arcpy.da.UpdateCursor(intersect, (soils_bin_field, land_use_LU_bin_field, slope_bin_field, code_field)) as cursor:
                 for row in cursor:
                     slpBin1 = int(row[2].split('-')[0]) if row[2] != 'NaN' else 0 # TODO: Identify why NaNs exist
                     slpBinVal = [k[2] for k in slope_bins_w_codes if k[0] == slpBin1][0]
-                    row[3] = helpers.calculateCode(slpBinVal, row[0], row[1], 'soils')
+                    row[3] = helpers.calculateCode(slpBinVal, row[0], row[1], soils_bin_field)
                     cursor.updateRow(row)
             logger.info('...land use codes added!')
 
@@ -305,33 +441,130 @@ def run_analysis():
 
             # Convert precipitation from mm to m and multiple by runoff vol.
             logger.info('Converting precipitation...')
-            with arcpy.da.UpdateCursor(intersect, ['SHAPE@AREA', runoff_coeff_field, base_field, 'precipitation_mean'],
-                                           '"{0}" is not null'.format(runoff_coeff_field)) as cursor:
-                    for row in cursor:
-                        # convert ppt from mm to m and multiply by area and runoff coeff
-                        row[2] = (row[3] / 1000.0) * row[0] * row[1]
-                        cursor.updateRow(row)
+            with arcpy.da.UpdateCursor(
+                in_table = intersect, 
+                field_names = ['SHAPE@AREA', runoff_coeff_field, base_field, 'precipitation_mean'],
+                where_clause = '"{0}" is not null'.format(runoff_coeff_field)
+            ) as cursor:
+                for row in cursor:
+                    # convert ppt from mm to m and multiply by area and runoff coeff
+                    row[2] = (row[3] / 1000.0) * row[0] * row[1]
+                    cursor.updateRow(row)
             logger.info('...precipitation converted!')
-
-            fc_table = arcpy.da.FeatureClassToNumPyArray( intersect, ["OID@","slope_mean", base_field, land_use_LU_bin_field, 'soils',
-                slope_bin_field, 'SHAPE@AREA', 'land_use', code_field, 'precipitation_mean'])
             
+            # Gather area statistics ----------------------------------------------
+            # Gather table from geodatabase, use for calculating statistics
+            
+            fc_table = arcpy.da.FeatureClassToNumPyArray( 
+                in_table = intersect, 
+                field_names = ["OID@", "slope_mean", base_field, land_use_LU_class_field, soils_bin_field, slope_bin_field, 'SHAPE@AREA', land_use_LU_code_field, code_field, 'precipitation_mean']
+            )
+
+            writer.add_fc_table(watershed_name, fc_table)
+            
+            # Create watershed statistics data structure, using dictionary
             values[ watershed_name ] = {}
-            values[ watershed_name ][ 'weighted_slope' ] = numpy.sum( fc_table["slope_mean"] * fc_table["SHAPE@AREA"] )
-            values[ watershed_name ][ 'weighted_precipitation' ] = numpy.sum( fc_table["precipitation_mean"] * fc_table["SHAPE@AREA"] )
+            total_area = numpy.sum( fc_table[ "SHAPE@AREA" ] )
+            values[ watershed_name ][ "total_area" ] = total_area
+            values[ watershed_name ][ "weighted_slope" ] = numpy.sum( fc_table[ "slope_mean" ] * fc_table[ "SHAPE@AREA" ] ) / total_area
+            values[ watershed_name ][ "weighted_precipitation" ] = numpy.sum( fc_table[ "precipitation_mean" ] * fc_table[ "SHAPE@AREA" ] ) / total_area
 
-            values[ watershed_name ][ 'land_use_bins' ] = {}
-            lu_bin_values = numpy.unique( fc_table[:][land_use_LU_bin_field] )
+            # Create watershed statistics data structure, using structured array
+            # value_array = 
+
+            # Land use bins
+            values[ watershed_name ][ "land_use_classes" ] = {}
+            lu_bin_values = numpy.unique( fc_table[:][land_use_LU_class_field] )
             for lu_bin_value in lu_bin_values:
-                values[ watershed_name ][ 'land_use_bins' ][ lu_bin_value ] = numpy.sum( fc_table[ fc_table[ land_use_LU_bin_field ] == lu_bin_value ]["SHAPE@AREA"] )
+                values[ watershed_name ][ 'land_use_classes' ][ lu_bin_value ] = numpy.sum( fc_table[ fc_table[ land_use_LU_class_field ] == lu_bin_value ][ "SHAPE@AREA" ] )
 
-            values[ watershed_name ][ 'slope_bins' ] = {}
+            # Slope bins
+            values[ watershed_name ][ "slope_bins" ] = {}
             slope_bin_values = numpy.unique( fc_table[:][slope_bin_field] )
             for slope_bin_value in slope_bin_values:
-                values[ watershed_name ][ 'slope_bins' ][ slope_bin_value ] = numpy.sum( fc_table[ fc_table[ slope_bin_field ] == slope_bin_value ]["SHAPE@AREA"] )
+                values[ watershed_name ][ 'slope_bins' ][ slope_bin_value ] = numpy.sum( fc_table[ fc_table[ slope_bin_field ] == slope_bin_value ][ "SHAPE@AREA" ] )
 
-            # values[ watershed_name ][ 'slope_bins' ] = 
-            # values[ watershed_name ][ 'soils' ]
-            print values
+            # Soils bins
             
+            values[ watershed_name ][ "soils_bins" ] = {}
+            soils_bin_values = numpy.unique( fc_table[:][ soils_bin_field] )
+            for soils_bin_value in soils_bin_values:
+                values[ watershed_name ][ "soils_bins" ][ soils_bin_value ] = numpy.sum( fc_table[ fc_table[soils_bin_field ] == soils_bin_value ][ "SHAPE@AREA" ] )
+            
+            # Land use
+            # values[ watershed_name ][ "land_use" ] = {}
+            # land_use_LU_code_values = numpy.unique( fc_table[:][ land_use_LU_code_field ] )
+            # for land_use_LU_code_value in land_use_LU_code_values:
+            #     values[ watershed_name ][ "land_use" ][ land_use_LU_code_value ] = numpy.sum( fc_table[ fc_table[land_use_LU_code_field] == land_use_LU_code_value ][ "SHAPE@AREA" ] ) / total_area
+
+            # print values            
             logger.info('FC Table successfully created!')
+
+            break # Only compute first watershed, for testing
+
+    # Write stats to csv files
+    writer.write_ws_stats_table( os.path.join( workspace, "results_wsStats.csv" ) )   
+    # write_stats_to_file( workspace, values )
+
+def write_stats_to_file( workspace, values ):
+    """Write watershed statistics to csv files"""
+
+    # Output table file names
+    ws_file_name = os.path.join( workspace, "results_wsStats.csv" )
+    land_use_stats_file_name = os.path.join( workspace, "results_luStats.csv" )
+
+    # Data structure for unique slope bin, soils group, and land use class values
+    unique[ "slope_bins" ] = []
+    unique[ "soils_bins" ] = []
+    unique[ "land_use_classes" ] = []
+
+    # Populate list of row data for watershed statistics output -------------------
+    ws_data = []
+
+    # Start with header
+    ws_data[0] = "Watershed"
+    ws_data[1] = "Tot. Area (km2)"
+    ws_data[2] = "Tot. Runoff Vol. (m3)"
+    ws_data[3] = "Average Weighted Precipitation (mm)"
+    ws_data[4] = "Average Weighted Slope (%)"
+
+    for watershed in values.keys():
+               
+        # Iterate through stats fields
+        for field in unique.keys():
+            for i in values[ watershed ][ field ].keys():
+                print "testing"
+        for slope_bin in values[ watershed ][ 'slope_bins' ].keys():
+            if slope_bin not in unique_slope_bins:
+                print "testing"
+    
+    # Add data
+    for watershed in values.keys():
+        print "testing"
+            #Add watershed name
+
+    # Write watershed stats to output file
+    with open( watershed_stats_file_name, 'wb' ) as csvfile:
+        writer = csv.writer(csvfile)
+        
+
+
+    # Open output tables
+    # TODO: Add this code
+
+
+
+def write_stats_to_file_old( workspace, values ):
+    """Write watershed statistics to csv files"""
+
+    # Output table file names
+    watershed_stats_file_name = os.path.join( workspace, "xxx_wsStats.csv" )
+    land_use_sxtats_file_name = os.path.join( workspace, "xxx_luStats.csv" )
+
+    # Open output tables
+    # TODO: Add this code
+
+    # Convert dictionary to structured numpy array
+    arr = numpy.array( values.items(), dtype = None)
+    numpy.savetxt( watershed_stats_file_name, arr, delimiter = ",", fmt="%s" )
+

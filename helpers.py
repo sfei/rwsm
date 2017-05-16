@@ -16,6 +16,8 @@ def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
     slope_bins = []
     slope_raster = arcpy.sa.Raster( slope_file_name )
     slope_raster_max = int(slope_raster.maximum)
+
+    # Gather unique slope bin values
     with open( runoff_coeff_file_name, 'rb' ) as csvfile:
         reader = csv.reader( csvfile )
         next(reader, None)  # skip the headers
@@ -23,6 +25,7 @@ def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
             slope = row[1]
             if slope not in slope_bins_strs:
                 slope_bins_strs.append( slope )
+
     # Convert strings to numeric values
     for slope_bin in slope_bins_strs:
         if "+" in slope_bin:
