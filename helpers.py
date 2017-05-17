@@ -4,6 +4,14 @@ LOG_LEVEL = logging.DEBUG  # Only show debug and up
 # LOG_LEVEL = logging.NOTSET # Show all messages
 # LOG_LEVEL = logging.CRITICAL # Only show critical messages
 
+def strip_chars( watershed_name, strip_set ):
+    """Strips illegal characters from watershed name"""
+    watershed_name_tmp = ''.join( watershed_name.split() )
+    for char in strip_set:
+        watershed_name_tmp = watershed_name_tmp.replace(char, '')
+    return watershed_name_tmp
+
+
 def get_logger( logger_level ):
     logging.basicConfig( level = logger_level )
     logger = logging.getLogger(__name__)
@@ -34,6 +42,34 @@ def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
             slope_bins.append( map(lambda x: int(x), slope_bin.strip("%").split("-")) )
         
     return slope_bins
+
+def load_land_use_table(config):
+    """Load unique sets of land use codes, land use descriptions, and classifications"""
+
+    # Gather relevant parameter values
+    file_name = config.get("RWSM","land_use_LU_file_name")
+    code_field = config.get("RWSM","land_use_field")
+    description_field = config.get("RWSM","land_use_LU_desc_field")
+    classification_field = config.get("RWSM","land_use_LU_class_field")
+
+    # Populate values structure with unique triples
+    values = []
+    with open( file_name, 'rb') as csvfile:
+        reader = csv.reader( csvfile )
+        headers = reader.next()
+        code_idx = headers.index( code_field )
+        description_idx = headers.index( description_field )
+        classification_idx = headers.index( classification_field )
+
+        for row in reader:
+            code = row[ code_idx ]
+            description = row[ description_idx ]
+            classification = row[ classification_idx ]
+            if ( code, description, classification ) not in values:
+                values.append( ( code, description, classification ) )
+    
+    return values
+
 
 # TODO: Check if we want to dynamically apply coefficient fields based on location category
 def load_runoff_coeff_lu( file_name, coefficient_field ):
