@@ -110,6 +110,7 @@ class Stats_Writer(object):
         ws_headers.append( "Watershed" )
         ws_headers.append( "Tot. Area (km2)" )
         ws_headers.append( "Tot. Runoff Vol. (m3)" )
+        ws_headers.append( "Tot. Runoff Vol. (10^6 m3)" )
         ws_headers.append( "Average Weighted Precipitation (mm)" )
         ws_headers.append( "Average Weighted Slope (%)" )
 
@@ -146,6 +147,18 @@ class Stats_Writer(object):
     def add_fc_table(self, watershed_name, fc_table):
         """Add feature class data to values data structure"""
 
+        runoff_vol_field = 'runoff_vol_' + self.config.get("RWSM","runoff_coeff_field")
+        land_use_LU_class_field = self.config.get("RWSM","land_use_LU_class_field")
+        soils_bin_field = self.config.get("RWSM","soils_bin_field")
+        slope_bin_field = self.config.get("RWSM","slope_bin_field")
+        land_use_LU_code_field = self.config.get("RWSM","land_use_LU_code_field")
+        code_field = 'code_' + self.config.get("RWSM","land_use_LU_bin_field")
+        
+        fc_table = arcpy.da.FeatureClassToNumPyArray( 
+            in_table = intersect, 
+            field_names = ["OID@", "slope_mean", runoff_vol_field, land_use_LU_class_field, soils_bin_field, slope_bin_field, 'SHAPE@AREA', land_use_LU_code_field, code_field, 'precipitation_mean']
+        )
+
         # List to be written as a row in watershed statistics data
         ws_row = []
 
@@ -161,8 +174,12 @@ class Stats_Writer(object):
         tot_runoff_vol = numpy.sum( fc_table[ runoff_vol_field ] )
         ws_row.append( tot_runoff_vol )
 
+        # Tot. Runoff Vol. (10^6 m3)
+        ws_row.append( tot_runoff_vol / 10**6 )
+        
+
         # Average Weighted Precipitation (mm)
-        ws_row.append( tot_runoff_vol / total_area )
+        ws_row.append( numpy.sum( fc_table[ "precipitation_mean" ] * fc_table[ "SHAPE@AREA" ] ) / total_area )
 
         # Average Weighted Slope (%)
         # TODO: Verify this computation
@@ -507,16 +524,7 @@ def run_analysis():
                 logger.info('...precipitation converted!')
                 
                 # Gather area statistics ----------------------------------------------
-                # Gather table from geodatabase, use for calculating statistics
-                
-                fc_table = arcpy.da.FeatureClassToNumPyArray( 
-                    in_table = intersect, 
-                    field_names = ["OID@", "slope_mean", base_field, land_use_LU_class_field, soils_bin_field, slope_bin_field, 'SHAPE@AREA', land_use_LU_code_field, code_field, 'precipitation_mean']
-                )
-                
-                logger.info( "fc_table size: {}".format( sys.getsizeof(fc_table)) )
-
-                writer.add_fc_table(watershed_name, fc_table)
+                writer.add_fc_table(watershed_name, intersect)
                 
                 logger.info( "FC Table successfully created for watershed {}!\n\n".format( watershed_name ) )
 
