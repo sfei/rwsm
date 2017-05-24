@@ -76,12 +76,22 @@ class RWSM(object):
         # Land use lookup table
         # TODO: Idenitfy if we need to support CSV import option
         #       for land use lookup.
-        land_use_LU = arcpy.Parameter(
+        land_use_LU_file_name = arcpy.Parameter(
             displayName="Land Use Lookup",
             name='land_use_LU',
             datatype="DETable",
             parameterType="Required",
             direction="Input")
+
+        # Land use lookup bin field
+        land_use_LU_code_field = arcpy.Parameter(
+            displayName="Land Use Lookup Code Field",
+            name="land_use_LU_code_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        land_use_LU_bin_field.parameterDependencies = [land_use_LU_file_name.name]
 
         # Land use lookup bin field
         land_use_LU_bin_field = arcpy.Parameter(
@@ -91,14 +101,32 @@ class RWSM(object):
             parameterType="Required",
             direction="Input"
         )
-        land_use_LU_bin_field.parameterDependencies = [land_use_LU.name]
+        land_use_LU_bin_field.parameterDependencies = [land_use_LU_file_name.name]
+
+        # Land use lookup bin field
+        land_use_LU_desc_field = arcpy.Parameter(
+            displayName="Land Use Lookup Description Field",
+            name="land_use_LU_desc_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        land_use_LU_bin_field.parameterDependencies = [land_use_LU_file_name.name]
+
+        # Land use lookup bin field
+        land_use_LU_class_field = arcpy.Parameter(
+            displayName="Land Use Lookup Class Field",
+            name="land_use_LU_class_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        land_use_LU_bin_field.parameterDependencies = [land_use_LU_file_name.name]
 
         # Runoff Coefficient Lookup Table
-        # TODO: Idenitfy if we need to support CSV import option
-        #       for runoff coefficient lookup table.
-        runoff_coeff_LU = arcpy.Parameter(
+        runoff_coeff_file_name = arcpy.Parameter(
             displayName="Runoff Coefficient Lookup Table",
-            name='runoff_coeff_LU',
+            name='runoff_coeff_file_name',
             datatype="DETable",
             parameterType="Required",
             direction="Input"
@@ -111,7 +139,34 @@ class RWSM(object):
             parameterType="Required",
             direction="Input"
         )
-        runoff_coeff_field.parameterDependencies = [runoff_coeff_LU.name]
+        runoff_coeff_field.parameterDependencies = [runoff_coeff_file_name.name]
+
+        runoff_coeff_slope_bin_field = arcpy.Parameter(
+            displayName="Runoff Coefficient Slope Bin Field",
+            name="runoff_coeff_slope_bin_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        runoff_coeff_field.parameterDependencies = [runoff_coeff_file_name.name]
+
+        runoff_coeff_soil_type_field = arcpy.Parameter(
+            displayName="Runoff Coefficient Soil Type Field",
+            name="runoff_coeff_soil_type_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        runoff_coeff_field.parameterDependencies = [runoff_coeff_file_name.name]
+
+        runoff_coeff_land_use_class_field = arcpy.Parameter(
+            displayName="Runoff Coefficient Land Use Class Field",
+            name="runoff_coeff_land_use_class_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        runoff_coeff_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         # Slope Raster
         slope_file_name = arcpy.Parameter(
@@ -122,6 +177,15 @@ class RWSM(object):
             direction="Input"
         )
 
+        slope_bin_field = arcpy.Parameter(
+            displayName="Slope Bin Field",
+            name="slope_bin_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        runoff_coeff_field.parameterDependencies = [slope_file_name.name]
+
         # Soils Shapefile
         soils_file_name = arcpy.Parameter(
             displayName="Soils Shapefile Input",
@@ -130,6 +194,24 @@ class RWSM(object):
             parameterType="Required",
             direction="Input",
         )
+
+        soils_field = arcpy.Parameter(
+            displayName="Soils Group Field",
+            name="soils_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        runoff_coeff_field.parameterDependencies = [soils_file_name.name]
+
+        soils_bin_field = arcpy.Parameter(
+            displayName="Soils Bin Field",
+            name="soils_bin_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input"
+        )
+        runoff_coeff_field.parameterDependencies = [soils_bin_field.name]
 
         # Precipitation Raster
         precipitation_file_name = arcpy.Parameter(
@@ -168,8 +250,9 @@ class RWSM(object):
         overwrite_config.value = False
 
         params = [workspace,watersheds,watersheds_field,land_use,land_use_field,
-            land_use_LU,land_use_LU_bin_field,runoff_coeff_LU,runoff_coeff_field,slope_file_name,
-            soils_file_name,precipitation_file_name,out_name,
+            land_use_LU_file_name,land_use_LU_code_field,land_use_LU_bin_field,land_use_LU_desc_field, land_use_LU_class_field,
+            runoff_coeff_file_name,runoff_coeff_field,runoff_coeff_slope_bin_field,runoff_coeff_soil_type_field,runoff_coeff_land_use_class_field,
+            slope_file_name,slope_bin_field,soils_file_name,soils_field,soils_bin_field,precipitation_file_name,out_name,
             delete_temp,overwrite_config]
 
         # If present, populate input values from configuration file.
@@ -228,42 +311,49 @@ class RWSM(object):
         """The source code of the tool."""
 
         # Read parameter values as text
-        workspace = parameters[0].valueAsText
-        watersheds = parameters[1].valueAsText
-        watersheds_field = parameters[2].valueAsText
-        land_use = parameters[3].valueAsText
-        land_use_field = parameters[4].valueAsText
-        land_use_LU = parameters[5].valueAsText
-        land_use_LU_bin_field = parameters[6].valueAsText
-        runoff_coeff_LU = parameters[7].valueAsText
-        runoff_coeff_field = parameters[8].valueAsText
-        out_name = parameters[9].valueAsText
-        slope_file_name = parameters[10].valueAsText
-        soils_file_name = parameters[11].valueAsText
-        precipitation_file_name = parameters[12].valueAsText
-        delete_temp = parameters[13].valueAsText
-        overwrite_config = parameters[14].valueAsText
+        # workspace = parameters[0].valueAsText
+        # watersheds = parameters[1].valueAsText
+        # watersheds_field = parameters[2].valueAsText
+        # land_use = parameters[3].valueAsText
+        # land_use_field = parameters[4].valueAsText
+        # land_use_LU = parameters[5].valueAsText
+        # land_use_LU_bin_field = parameters[6].valueAsText
+        # runoff_coeff_LU = parameters[7].valueAsText
+        # runoff_coeff_field = parameters[8].valueAsText
+        # out_name = parameters[9].valueAsText
+        # slope_file_name = parameters[10].valueAsText
+        # soils_file_name = parameters[11].valueAsText
+        # precipitation_file_name = parameters[12].valueAsText
+        # delete_temp = parameters[13].valueAsText
+        # overwrite_config = parameters[14].valueAsText
 
-        # Initialize workspace
-        # TODO: Insert workspace optimization here, temporary gdb
-        # See dissolve test, make cleaner
+        # Parameter data structure
+        params = {}
+        params['workspace'] = parameters[0].valueAsText
+        params['watersheds'] = parameters[1].valueAsText
+        params['watersheds_field'] = parameters[2].valueAsText
+        params['land_use'] = parameters[3].valueAsText
+        params['land_use_field'] = parameters[4].valueAsText
+        params['land_use_LU_file_name'] = parameters[5].valueAsText
+        params['land_use_LU_code_field'] = parameters[6].valueAsText
+        params['land_use_LU_bin_field'] = parameters[7].valueAsText
+        params['land_use_LU_desc_field'] = parameters[8].valueAsText
+        params['land_use_LU_class_field'] = parameters[9].valueAsText
+        params['runoff_coeff_file_name'] = parameters[10].valueAsText
+        params['runoff_coeff_field'] = parameters[11].valueAsText
+        params['runoff_coeff_slope_bin_field'] = parameters[12].valueAsText
+        params['runoff_coeff_soil_type_field'] = parameters[13].valueAsText
+        params['runoff_coeff_land_use_class_field'] = parameters[14].valueAsText
+        params['slope_file_name'] = parameters[15].valueAsText
+        params['slope_bin_field'] = parameters[16].valueAsText
+        params['soils_file_name'] = parameters[17].valueAsText
+        params['soils_field'] = parameters[18].valueAsText
+        params['soils_bin_field'] = parameters[19].valueAsText
+        params['precipitation_file_name'] = parameters[20].valueAsText
+        params['out_name'] = parameters[21].valueAsText
+        params['delete_temp'] = parameters[22].valueAsText
+        params['overwrite_config'] = parameters[23].valueAsText
 
-        # TODO: Update progressor label
-
-        # Dissolve watersheds, keep single parts
-        # TODO: Determine if we really neeed to dissolve watersheds.
-        ws = rwsm.Watershed(watersheds,watersheds_field)
-        
-
-        # Iterate through watersheds
-
-
-        # TODO: Clip land use
-        #clipped_land_use = rwsm.clip_land_use(watersheds, land_use, land_use_field)
-        
-        # Clip soils
-
-
-
+        rwsm.run_analysis( params )
 
         return
