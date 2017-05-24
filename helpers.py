@@ -104,6 +104,10 @@ def load_config( file_name ):
     config.readfp( open( file_name ) )
     return config
 
+def get_empty_config():
+    config = ConfigParser.ConfigParser()
+    return config
+
 # Write configuration file using user supplied values
 def write_config( file_name, params ):
     config = ConfigParser.RawConfigParser()
