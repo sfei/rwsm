@@ -1,4 +1,12 @@
-import os, sys, csv, ConfigParser, arcpy, arcinfo, datetime, logging
+import os
+import sys
+import csv
+import ConfigParser
+import arcpy
+import arcinfo
+import datetime
+import logging
+import time
 
 LOG_LEVEL = logging.DEBUG  # Only show debug and up
 # LOG_LEVEL = logging.NOTSET # Show all messages
@@ -312,3 +320,7 @@ def calculateCode(slpValue, geolValue, luValue, geolName):
     #else:
         #luValue = float(str(luValue)[0] + '.' + str(luValue)[1:])  # convert luValue to decimal with highest digit as ones place
     return slpValue + geolValueOut + luValue
+
+# Define function to format time to a legible string
+def format_time(t):
+    return str(datetime.timedelta(seconds=round(time.clock() - t)))

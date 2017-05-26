@@ -169,7 +169,7 @@ class RWSM_Toolbox(object):
         slope_bin_field = arcpy.Parameter(
             displayName="Slope Bin Field (Will be used in shapefile output)",
             name="slope_bin_field",
-            datatype="Field",
+            datatype="GPString",
             parameterType="Required",
             direction="Input")
 
@@ -192,10 +192,9 @@ class RWSM_Toolbox(object):
         soils_bin_field = arcpy.Parameter(
             displayName="Soils Bin Field",
             name="soils_bin_field",
-            datatype="Field",
+            datatype="GPString",
             parameterType="Required",
             direction="Input")
-        soils_bin_field.parameterDependencies = [soils_bin_field.name]
 
         # Precipitation Raster
         precipitation_file_name = arcpy.Parameter(
@@ -319,6 +318,6 @@ class RWSM_Toolbox(object):
         config_file.close()
 
         # Run analysis
-        rwsm.run_analysis(config)
+        rwsm.run_analysis(config = config, is_gui = True)
 
         return
