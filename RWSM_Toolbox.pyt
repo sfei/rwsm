@@ -217,7 +217,8 @@ class RWSM_Toolbox(object):
             name="delete_temp",
             datatype="GPBoolean",
             parameterType="Optional",
-            direction="Input")
+            direction="Input",
+            enabled=0)
         delete_temp.value = False
 
         overwrite_config = arcpy.Parameter(
@@ -225,7 +226,8 @@ class RWSM_Toolbox(object):
             name="overwrite_config",
             datatype="GPBoolean",
             parameterType="Optional",
-            direction="Input")
+            direction="Input",
+            enabled=0)
         overwrite_config.value = False
 
         params = [workspace,watersheds,watersheds_field,land_use,land_use_field,
@@ -309,8 +311,8 @@ class RWSM_Toolbox(object):
         config.set("RWSM", "soils_bin_field", parameters[19].valueAsText)
         config.set("RWSM", "precipitation_file_name", parameters[20].valueAsText)
         config.set("RWSM", "out_name", parameters[21].valueAsText)
-        config.set("RWSM", "delete_temp", parameters[22].valueAsText)
-        config.set("RWSM", "overwrite_config", parameters[23].valueAsText)
+        # config.set("RWSM", "delete_temp", parameters[22].valueAsText)
+        # config.set("RWSM", "overwrite_config", parameters[23].valueAsText)
 
         # Write config file to disk
         config_file = open(CONFIG_FILE_NAME,'w')
