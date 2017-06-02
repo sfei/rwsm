@@ -401,8 +401,8 @@ def run_analysis( config = None, is_gui = False ):
     if is_gui:
         arcpy.SetProgressor("default","Computing slope bins...")
     slope_raster = arcpy.sa.Raster( slope_file_name )
-    slope_bins = helpers.load_slope_bins( runoff_coeff_file_name, slope_file_name )
-    slope_bins_w_codes = helpers.load_slope_bins( runoff_coeff_file_name, slope_file_name )
+    slope_bins = helpers.load_slope_bins( config )
+    slope_bins_w_codes = helpers.load_slope_bins( config )
     map(lambda x: x.append( ( slope_bins_w_codes.index(x) + 1 ) * 100 ), slope_bins_w_codes )
     logger.info( "Slope Bins: {}".format( slope_bins ) )
     logger.info( "Slope Bins w/ Codes: {}".format( slope_bins_w_codes ) )
@@ -532,30 +532,33 @@ def run_analysis( config = None, is_gui = False ):
                     break
                 
                 # Intersect Land Use and Soils ----------------------------------------
-                logger.info('Intersecting land use and soils...')
                 intersect_land_use_and_soils = arcpy.Intersect_analysis(
                     in_features = [land_use_clip, soils_clip],
                     out_feature_class = "int_" + watershed_name,
                     join_attributes = "NO_FID"
                 )
-                logger.info('...land use and soils intersected!')
                 if is_gui:
                     msg = "{}: land use and soils intersect complete: {}".format(watershed_name, helpers.format_time(start_time))
                     arcpy.AddMessage(msg)
 
-                logger.info('Converting multiparts to single parts...')
                 intersect_land_use_and_soils_singles = arcpy.MultipartToSinglepart_management(
                     in_features = intersect_land_use_and_soils,
                     out_feature_class = "intX_" + watershed_name
                 )
-                logger.info('...conversion complete!')
-                logger.info('Eliminating small polygons, saving to output file...')
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: Multipart to single part complete: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
+
                 intersect = helpers.elimSmallPolys(
                     fc = intersect_land_use_and_soils_singles, 
                     outName = os.path.join( workspace, out_file_name, watershed_name ), 
                     clusTol = 0.005
                 )
-                logger.info('...small polygons eliminated!')
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: elimSmallPolys: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
 
                 # Add unique ID field -------------------------------------------------
                 arcpy.AddField_management(
@@ -567,21 +570,28 @@ def run_analysis( config = None, is_gui = False ):
                     for row in cursor:
                         row[1] = row[0]
                         cursor.updateRow(row)
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: uID field added: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
 
                 # Add Slope bin field -------------------------------------------------
-                logger.info('Computing slope raster statistics...')
                 helpers.rasterAvgs(intersect, slope_raster, 'slope', watershed_name)
                 arcpy.AddField_management(intersect, slope_bin_field, "TEXT")
-                logger.info('Raster statistics computed!')
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: slope bin field added: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
                 
                 
                 # Precipitation -------------------------------------------------------
-                logger.info('Computing precipitation raster statistics...')
                 helpers.rasterAvgs(intersect, precipitation_raster, 'precipitation', watershed_name)
-                logger.info('Raster statistics computed!')
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: Precipitation added: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
 
                 # Add soils, land use, and slope fields -------------------------------
-                logger.info( "Adding field values...".format(watershed_name) )
                 arcpy.AddField_management(intersect, "watershed", "TEXT")
                 arcpy.AddField_management(intersect, "soils", "TEXT")
                 arcpy.AddField_management(intersect, "land_use", "LONG")
@@ -603,18 +613,23 @@ def run_analysis( config = None, is_gui = False ):
                         row[5] = slope_bin
 
                         cursor.updateRow(row)
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: soils, land use, and slope fields added: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
 
                 # Add land use code fields ---------------------------------------------
                 # TODO: Update this so it doesn't use codes, but combination of slope bin, soils, and land use category
-                logger.info('Adding land use fields...')
                 code_field = 'code_' + land_use_LU_bin_field
                 base_field = 'runoff_vol_' + runoff_coeff_field
                 arcpy.AddField_management(intersect, code_field, "DOUBLE")
                 arcpy.AddField_management(intersect, base_field, "DOUBLE")
-                logger.info('...land use fields added!')
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: land use code and runoff volume fields added: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
 
                 # Write in values for new fields --------------------------------------
-                logger.info('Adding land use code to output...')
                 # TODO: Phase out slope bin codes in general
                 with arcpy.da.UpdateCursor(intersect, (soils_bin_field, land_use_LU_bin_field, slope_bin_field, code_field)) as cursor:
                     for row in cursor:
@@ -623,7 +638,10 @@ def run_analysis( config = None, is_gui = False ):
                         slpBinVal = [k[2] for k in slope_bins_w_codes if k[0] == slpBin1][0]
                         row[3] = helpers.calculateCode(slpBinVal, row[0], float(row[1]), soils_bin_field)
                         cursor.updateRow(row)
-                logger.info('...land use codes added!')
+                # TODO: Remove these
+                if is_gui:
+                    msg = "{}: land use codes added: {}".format(watershed_name, helpers.format_time(start_time))
+                    arcpy.AddMessage(msg)
 
                 # Join runoff coeff lookup table and calculate runoff volume
                 helpers.fasterJoin(
@@ -634,6 +652,7 @@ def run_analysis( config = None, is_gui = False ):
                     fields = (runoff_coeff_field,),
                     convertCodes = True # TODO: Find alternative for flagging string to float/int conversion
                 )
+                arcpy.AddField_management(intersect, runoff_coeff_field, "Double")
                 if is_gui:
                     msg = "{}: output fields added: {}".format(watershed_name, helpers.format_time(start_time))
                     arcpy.AddMessage(msg)

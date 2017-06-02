@@ -26,8 +26,12 @@ def get_logger( logger_level ):
     return logger
 
 # TODO: Allow function to accept slope raster OR file name
-def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
+def load_slope_bins( config ):
     """Populate slope bin lookup structure."""
+    runoff_coeff_file_name = config.get("RWSM","runoff_coeff_file_name")
+    slope_file_name = config.get("RWSM","slope_file_name")
+    slope_bin_field = config.get("RWSM","runoff_coeff_slope_bin_field")
+    
     slope_bins_strs = []
     slope_bins = []
     slope_raster = arcpy.sa.Raster( slope_file_name )
@@ -36,9 +40,10 @@ def load_slope_bins( runoff_coeff_file_name, slope_file_name ):
     # Gather unique slope bin values
     with open( runoff_coeff_file_name, 'rb' ) as csvfile:
         reader = csv.reader( csvfile )
-        next(reader, None)  # skip the headers
+        headers = next(reader, None)  # skip the headers
+        slope_idx = headers.index(slope_bin_field)
         for row in reader:
-            slope = row[1]
+            slope = row[slope_idx]
             if slope not in slope_bins_strs:
                 slope_bins_strs.append( slope )
 

@@ -93,7 +93,7 @@ class RWSM_Toolbox(object):
 
         # Land use lookup bin field
         land_use_LU_bin_field = arcpy.Parameter(
-            displayName="Land Use Lookup Bin Field",
+            displayName="Land Use Lookup Classification Code Field",
             name="land_use_LU_bin_field",
             datatype="Field",
             parameterType="Required",
@@ -111,7 +111,7 @@ class RWSM_Toolbox(object):
 
         # Land use lookup bin field
         land_use_LU_class_field = arcpy.Parameter(
-            displayName="Land Use Lookup Class Field",
+            displayName="Land Use Lookup Classification Field",
             name="land_use_LU_class_field",
             datatype="Field",
             parameterType="Required",
@@ -151,7 +151,7 @@ class RWSM_Toolbox(object):
         runoff_coeff_soil_type_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         runoff_coeff_land_use_class_field = arcpy.Parameter(
-            displayName="Runoff Coefficient Land Use Class Field",
+            displayName="Runoff Coefficient Land Use Classification Field",
             name="runoff_coeff_land_use_class_field",
             datatype="Field",
             parameterType="Required",
@@ -190,7 +190,7 @@ class RWSM_Toolbox(object):
         soils_field.parameterDependencies = [soils_file_name.name]
 
         soils_bin_field = arcpy.Parameter(
-            displayName="Soils Bin Field",
+            displayName="Soils Bin Field (Will be used in shapefile output)",
             name="soils_bin_field",
             datatype="GPString",
             parameterType="Required",
