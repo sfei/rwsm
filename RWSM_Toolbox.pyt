@@ -158,6 +158,14 @@ class RWSM_Toolbox(object):
             direction="Input")
         runoff_coeff_land_use_class_field.parameterDependencies = [runoff_coeff_file_name.name]
 
+        runoff_coeff_land_use_class_code_field = arcpy.Parameter(
+            displayName="Runoff Coefficient Land Use Classification Code Field",
+            name="runoff_coeff_land_use_class_code_field",
+            datatype="Field",
+            parameterType="Required",
+            direction="Input")
+        runoff_coeff_land_use_class_field.parameterDependencies = [runoff_coeff_file_name.name]
+
         # Slope Raster
         slope_file_name = arcpy.Parameter(
             displayName="Slope Raster Input",
@@ -233,7 +241,7 @@ class RWSM_Toolbox(object):
         params = [workspace,watersheds,watersheds_field,land_use,land_use_field,
             land_use_LU_file_name,land_use_LU_code_field,land_use_LU_bin_field,land_use_LU_desc_field, land_use_LU_class_field,
             runoff_coeff_file_name,runoff_coeff_field,runoff_coeff_slope_bin_field,runoff_coeff_soil_type_field,runoff_coeff_land_use_class_field,
-            slope_file_name,slope_bin_field,soils_file_name,soils_field,soils_bin_field,precipitation_file_name,out_name,
+            runoff_coeff_land_use_class_code_field,slope_file_name,slope_bin_field,soils_file_name,soils_field,soils_bin_field,precipitation_file_name,out_name,
             delete_temp,overwrite_config]
 
         # If present, populate input values from configuration file.
@@ -304,13 +312,14 @@ class RWSM_Toolbox(object):
         config.set("RWSM", "runoff_coeff_slope_bin_field", parameters[12].valueAsText)
         config.set("RWSM", "runoff_coeff_soil_type_field", parameters[13].valueAsText)
         config.set("RWSM", "runoff_coeff_land_use_class_field", parameters[14].valueAsText)
-        config.set("RWSM", "slope_file_name", parameters[15].valueAsText)
-        config.set("RWSM", "slope_bin_field", parameters[16].valueAsText)
-        config.set("RWSM", "soils_file_name", parameters[17].valueAsText)
-        config.set("RWSM", "soils_field", parameters[18].valueAsText)
-        config.set("RWSM", "soils_bin_field", parameters[19].valueAsText)
-        config.set("RWSM", "precipitation_file_name", parameters[20].valueAsText)
-        config.set("RWSM", "out_name", parameters[21].valueAsText)
+        config.set("RWSM", "runoff_coeff_land_use_class_code_field", parameters[15].valueAsText)
+        config.set("RWSM", "slope_file_name", parameters[16].valueAsText)
+        config.set("RWSM", "slope_bin_field", parameters[17].valueAsText)
+        config.set("RWSM", "soils_file_name", parameters[18].valueAsText)
+        config.set("RWSM", "soils_field", parameters[19].valueAsText)
+        config.set("RWSM", "soils_bin_field", parameters[20].valueAsText)
+        config.set("RWSM", "precipitation_file_name", parameters[21].valueAsText)
+        config.set("RWSM", "out_name", parameters[22].valueAsText)
         # config.set("RWSM", "delete_temp", parameters[22].valueAsText)
         # config.set("RWSM", "overwrite_config", parameters[23].valueAsText)
 

@@ -428,6 +428,9 @@ def run_analysis( config = None, is_gui = False ):
     # List of tuples for holding error information
     watershed_errors = []
 
+    # Load code to coefficient lookup table
+    codes_to_coeff_lookup = helpers.get_code_to_coeff_lookup(config)
+
     # Iterate through watersheds, run precipitation clip analysis
     #------------------------------------------------------------------------------
     logger.info( 'Iterating watersheds...')
@@ -644,15 +647,19 @@ def run_analysis( config = None, is_gui = False ):
                     arcpy.AddMessage(msg)
 
                 # Join runoff coeff lookup table and calculate runoff volume
-                helpers.fasterJoin(
-                    fc = intersect,
-                    fcField = code_field, 
-                    joinFC = runoff_coeff_file_name, 
-                    joinFCField = 'code', 
-                    fields = (runoff_coeff_field,),
-                    convertCodes = True # TODO: Find alternative for flagging string to float/int conversion
-                )
+                # helpers.fasterJoin(
+                #     fc = intersect,
+                #     fcField = code_field, 
+                #     joinFC = runoff_coeff_file_name, 
+                #     joinFCField = 'code', 
+                #     fields = (runoff_coeff_field,),
+                #     convertCodes = True # TODO: Find alternative for flagging string to float/int conversion
+                # )
                 arcpy.AddField_management(intersect, runoff_coeff_field, "Double")
+                with arcpy.da.UpdateCursor(intersect,(runoff_coeff_field,code_field)) as cursor:
+                    for row in cursor:
+                        row[0] = codes_to_coeff_lookup[row[1]]
+                        cursor.updateRow(row)
                 if is_gui:
                     msg = "{}: output fields added: {}".format(watershed_name, helpers.format_time(start_time))
                     arcpy.AddMessage(msg)

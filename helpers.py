@@ -26,14 +26,18 @@ def get_logger( logger_level ):
     return logger
 
 # TODO: Allow function to accept slope raster OR file name
-def load_slope_bins( config ):
-    """Populate slope bin lookup structure."""
+def load_slope_bins( config, get_dict=False ):
+    """Populate slope bin list structure. Reteurn dictionary if specified."""
     runoff_coeff_file_name = config.get("RWSM","runoff_coeff_file_name")
     slope_file_name = config.get("RWSM","slope_file_name")
     slope_bin_field = config.get("RWSM","runoff_coeff_slope_bin_field")
     
+    if get_dict:
+        slope_bins = {}
+    else:
+        slope_bins = []
+
     slope_bins_strs = []
-    slope_bins = []
     slope_raster = arcpy.sa.Raster( slope_file_name )
     slope_raster_max = int(slope_raster.maximum)
 
@@ -48,11 +52,18 @@ def load_slope_bins( config ):
                 slope_bins_strs.append( slope )
 
     # Convert strings to numeric values
-    for slope_bin in slope_bins_strs:
-        if "+" in slope_bin:
-            slope_bins.append( [int(slope_bin.strip("+").strip("%")), slope_raster_max] )
-        else:
-            slope_bins.append( map(lambda x: int(x), slope_bin.strip("%").split("-")) )
+    if get_dict:
+        for slope_bin in slope_bins_strs:
+            if "+" in slope_bin:
+                slope_bins[slope_bin] = [int(slope_bin.strip("+").strip("%")), slope_raster_max]
+            else:
+                slope_bins[slope_bin] = map(lambda x: int(x), slope_bin.strip("%").split("-"))
+    else:
+        for slope_bin in slope_bins_strs:
+            if "+" in slope_bin:
+                slope_bins.append( [int(slope_bin.strip("+").strip("%")), slope_raster_max] )
+            else:
+                slope_bins.append( map(lambda x: int(x), slope_bin.strip("%").split("-")) )
         
     return slope_bins
 
@@ -329,3 +340,53 @@ def calculateCode(slpValue, geolValue, luValue, geolName):
 # Define function to format time to a legible string
 def format_time(t):
     return str(datetime.timedelta(seconds=round(time.clock() - t)))
+
+def get_code_to_coeff_lookup(config):
+    """Obtain code to coefficient dictionary"""
+
+    # Output data structure
+    code_to_coeff_lookup = {}
+
+    # Load values from config
+    runoff_coeff_file_name = config.get("RWSM","runoff_coeff_file_name")
+    runoff_coeff_slope_bin_field = config.get("RWSM","runoff_coeff_slope_bin_field")
+    runoff_coeff_field = config.get("RWSM","runoff_coeff_field")
+    runoff_coeff_soil_type_field = config.get("RWSM","runoff_coeff_soil_type_field")
+    runoff_coeff_land_use_class_code_field = config.get("RWSM","runoff_coeff_land_use_class_code_field")
+
+    # Specify soil values, only remaining hard-coded references
+    soil_type_values = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70, 'null': 0}
+
+    # Obtain dictionary mapping slope bins observed in runoff file with codes
+    slope_bins = load_slope_bins( config=config, get_dict=True )
+    slope_bins_w_codes = {}
+    slope_bin_code = 100
+    for slope_bin in slope_bins.keys():
+        slope_bins_w_codes[slope_bin] = slope_bin_code
+        slope_bin_code += 100
+
+
+    with open( runoff_coeff_file_name, 'rb' ) as csvfile:
+        reader = csv.reader( csvfile )
+        headers = next(reader, None)
+
+        # Get indicies
+        slope_bin_idx = headers.index(runoff_coeff_slope_bin_field)
+        coeff_idx = headers.index(runoff_coeff_field)
+        soil_type_idx = headers.index(runoff_coeff_soil_type_field)
+        land_use_class_code_idx = headers.index(runoff_coeff_land_use_class_code_field)
+
+        for row in reader:
+            slope_bin_val = row[slope_bin_idx]
+            coeff_val = row[coeff_idx]
+            soil_type = row[soil_type_idx]
+            land_use_class_code = float(row[land_use_class_code_idx])
+
+            # Get code for slope bin, convert string and lookup in structure
+            slope_bin_code = slope_bins_w_codes[slope_bin_val]
+            
+            soil_type_code = soil_type_values[soil_type]
+            code = slope_bin_code + soil_type_code + land_use_class_code
+            code_to_coeff_lookup[code] = coeff_val
+
+    return code_to_coeff_lookup
