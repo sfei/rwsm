@@ -378,7 +378,7 @@ def get_code_to_coeff_lookup(config):
 
         for row in reader:
             slope_bin_val = row[slope_bin_idx]
-            coeff_val = row[coeff_idx]
+            coeff_val = float(row[coeff_idx])
             soil_type = row[soil_type_idx]
             land_use_class_code = float(row[land_use_class_code_idx])
 

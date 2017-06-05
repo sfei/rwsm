@@ -180,8 +180,8 @@ class Stats_Writer(object):
             in_table = intersect, 
             field_names = 'SHAPE@AREA'
         )
-        total_area = numpy.sum( fc_table[ "SHAPE@AREA" ] / 10**6 )
-        ws_row.append( total_area )
+        total_area = numpy.sum( fc_table[ "SHAPE@AREA" ] )
+        ws_row.append( total_area / 10**6 )
 
         # Tot. Runoff Vol. (m3)
         runoff_vol_field = 'runoff_vol_' + self.config.get("RWSM","runoff_coeff_field")
