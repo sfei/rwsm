@@ -596,9 +596,9 @@ def run_analysis( config = None, is_gui = False ):
 
                 # Add soils, land use, and slope fields -------------------------------
                 arcpy.AddField_management(intersect, "watershed", "TEXT")
-                arcpy.AddField_management(intersect, "soils", "TEXT")
+                arcpy.AddField_management(intersect, soils_bin_field, "TEXT")
                 arcpy.AddField_management(intersect, "land_use", "LONG")
-                with arcpy.da.UpdateCursor(intersect, ("watershed","soils",soils_field,"land_use",land_use_field,slope_bin_field,'slope_mean')) as cursor:
+                with arcpy.da.UpdateCursor(intersect, ("watershed",soils_bin_field,soils_field,"land_use",land_use_field,slope_bin_field,'slope_mean')) as cursor:
                     for row in cursor:
                         # Shift columns
                         row[0] = watershed_name
@@ -703,7 +703,11 @@ def run_analysis( config = None, is_gui = False ):
     if is_gui:
         msg = "Analysis complete: {}".format(helpers.format_time(start_time))
         arcpy.AddMessage(msg)
-        msg = "Errors encountered while computing analysis for the following watersheds:"
-        arcpy.AddMessage(msg)
-        for (watershed_name,error) in watershed_errors:
-            arcpy.AddMessage(watershed_name)
+        if len(watershed_errors) > 0:
+            msg = "Errors encountered while computing analysis for the following watersheds:"
+            arcpy.AddMessage(msg)
+            for (watershed_name,error) in watershed_errors:
+                arcpy.AddMessage(watershed_name)
+        else:
+            msg = "There were no errors during the analysis"
+            arcpy.AddMessage(msg)

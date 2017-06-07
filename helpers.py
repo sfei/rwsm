@@ -321,10 +321,13 @@ def getCountInt(fc):
 # TODO: This will be phased out once land use lookups are indexed by tuples
 def calculateCode(slpValue, geolValue, luValue, geolName):
     """Calculates code for each unique land unit, used in runoff coeff lookup table"""
-    if geolName == 'geol':
-        geolValues = {'Franciscan': 10, 'Great Valley': 20, 'Quaternary': 30, 'Salinian': 40, 'Tertiary': 50, 'Water': 60}
-    elif geolName == 'soils':
-        geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
+
+    geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
+    # if geolName == 'geol':
+    #     geolValues = {'Franciscan': 10, 'Great Valley': 20, 'Quaternary': 30, 'Salinian': 40, 'Tertiary': 50, 'Water': 60}
+    # elif geolName == 'soils':
+    #     geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
+
     if geolValue in geolValues:
         geolValueOut = geolValues[geolValue]
     else:

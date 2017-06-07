@@ -41,7 +41,7 @@ class RWSM_Toolbox(object):
             displayName="Watersheds",
             name="watersheds",
             datatype="GPFeatureLayer",
-            parameterType="Optional",
+            parameterType="Required",
             direction="Input")
 
         # Watershed identification field
@@ -164,7 +164,7 @@ class RWSM_Toolbox(object):
             datatype="Field",
             parameterType="Required",
             direction="Input")
-        runoff_coeff_land_use_class_field.parameterDependencies = [runoff_coeff_file_name.name]
+        runoff_coeff_land_use_class_code_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         # Slope Raster
         slope_file_name = arcpy.Parameter(
