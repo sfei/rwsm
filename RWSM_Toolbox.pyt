@@ -1,8 +1,15 @@
+#!/usr/bin/env python
+
+"""RWSM_Toolbox.pyt: RWSM Toolbox python template file, initializes toolbox."""
+
+__copyright__ = "Copyright 2017, San Francisco Estuary Institute"
+
 import os
 import arcpy
 import helpers
 import rwsm
 
+# Initialization file for populating toolbox GUI
 LOCAL_PATH = os.path.dirname(os.path.realpath(__file__))
 CONFIG_FILE_NAME = os.path.join(LOCAL_PATH, "rwsm.ini")
 
@@ -14,7 +21,6 @@ class Toolbox(object):
         self.label = "RWSM Toolbox"
         self.alias = ""
 
-        # List of tool classes associated with this toolbox
         self.tools = [RWSM_Toolbox]
 
 
@@ -25,10 +31,9 @@ class RWSM_Toolbox(object):
         self.description = ""
         self.canRunInBackground = False
 
-    # Configure UI fields
     def getParameterInfo(self):
+        """Configure Toolbox UI fields"""
 
-        # Arcpy Workspace
         workspace = arcpy.Parameter(
             displayName="Workspace",
             name="workspace",
@@ -36,7 +41,6 @@ class RWSM_Toolbox(object):
             parameterType="Required",
             direction="Input")
 
-        # Watershed shapefile location
         watersheds = arcpy.Parameter(
             displayName="Watersheds",
             name="watersheds",
@@ -44,8 +48,6 @@ class RWSM_Toolbox(object):
             parameterType="Required",
             direction="Input")
 
-        # Watershed identification field
-        # TODO: Add check to ensure field exists in shapefile
         watersheds_field = arcpy.Parameter(
             displayName="Watershed Field",
             name="watersheds_field",
@@ -54,80 +56,69 @@ class RWSM_Toolbox(object):
             direction="Input")
         watersheds_field.parameterDependencies = [watersheds.name]
 
-        # Land Use shapefile
         land_use = arcpy.Parameter(
-            displayName="Land Use Shapefile",
+            displayName="Land Use Vector Layer",
             name="land_use",
             datatype="GPFeatureLayer",
             parameterType="Required",
             direction="Input")
 
-        # Land use field
-        # TODO: Add check to ensure field exists in shapefile
         land_use_field = arcpy.Parameter(
-            displayName="Land Use Field",
+            displayName="Land Use Vector Layer Watershed Name Field",
             name="land_use_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         land_use_field.parameterDependencies = [land_use.name]
 
-        # Land use lookup table
-        # TODO: Idenitfy if we need to support CSV import option
-        #       for land use lookup.
         land_use_LU_file_name = arcpy.Parameter(
-            displayName="Land Use Lookup",
+            displayName="Land Use CSV",
             name='land_use_LU_file_name',
             datatype="DETable",
             parameterType="Required",
             direction="Input")
 
-        # Land use lookup bin field
         land_use_LU_code_field = arcpy.Parameter(
-            displayName="Land Use Lookup Code Field",
+            displayName="Land Use CSV Code Field",
             name="land_use_LU_code_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         land_use_LU_code_field.parameterDependencies = [land_use_LU_file_name.name]
 
-        # Land use lookup bin field
         land_use_LU_bin_field = arcpy.Parameter(
-            displayName="Land Use Lookup Classification Code Field",
+            displayName="Land Use CSV Classification Code Field",
             name="land_use_LU_bin_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         land_use_LU_bin_field.parameterDependencies = [land_use_LU_file_name.name]
 
-        # Land use lookup bin field
         land_use_LU_desc_field = arcpy.Parameter(
-            displayName="Land Use Lookup Description Field",
+            displayName="Land Use CSV Description Field",
             name="land_use_LU_desc_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         land_use_LU_desc_field.parameterDependencies = [land_use_LU_file_name.name]
 
-        # Land use lookup bin field
         land_use_LU_class_field = arcpy.Parameter(
-            displayName="Land Use Lookup Classification Field",
+            displayName="Land Use CSV Classification Field",
             name="land_use_LU_class_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         land_use_LU_class_field.parameterDependencies = [land_use_LU_file_name.name]
 
-        # Runoff Coefficient Lookup Table
         runoff_coeff_file_name = arcpy.Parameter(
-            displayName="Runoff Coefficient Lookup Table",
+            displayName="Runoff Coefficient CSV",
             name='runoff_coeff_file_name',
             datatype="DETable",
             parameterType="Required",
             direction="Input")
 
         runoff_coeff_field = arcpy.Parameter(
-            displayName="Runoff Coefficient Field",
+            displayName="Runoff Coefficient CSV Runoff Value Field",
             name="runoff_coeff_field",
             datatype="Field",
             parameterType="Required",
@@ -135,7 +126,7 @@ class RWSM_Toolbox(object):
         runoff_coeff_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         runoff_coeff_slope_bin_field = arcpy.Parameter(
-            displayName="Runoff Coefficient Slope Bin Field",
+            displayName="Runoff Coefficient CSV Slope Bin Field",
             name="runoff_coeff_slope_bin_field",
             datatype="Field",
             parameterType="Required",
@@ -143,7 +134,7 @@ class RWSM_Toolbox(object):
         runoff_coeff_slope_bin_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         runoff_coeff_soil_type_field = arcpy.Parameter(
-            displayName="Runoff Coefficient Soil Type Field",
+            displayName="Runoff Coefficient CSV Soil Type Field",
             name="runoff_coeff_soil_type_field",
             datatype="Field",
             parameterType="Required",
@@ -151,7 +142,7 @@ class RWSM_Toolbox(object):
         runoff_coeff_soil_type_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         runoff_coeff_land_use_class_field = arcpy.Parameter(
-            displayName="Runoff Coefficient Land Use Classification Field",
+            displayName="Runoff Coefficient CSV Land Use Classification Field",
             name="runoff_coeff_land_use_class_field",
             datatype="Field",
             parameterType="Required",
@@ -159,14 +150,13 @@ class RWSM_Toolbox(object):
         runoff_coeff_land_use_class_field.parameterDependencies = [runoff_coeff_file_name.name]
 
         runoff_coeff_land_use_class_code_field = arcpy.Parameter(
-            displayName="Runoff Coefficient Land Use Classification Code Field",
+            displayName="Runoff Coefficient CSV Land Use Classification Code Field",
             name="runoff_coeff_land_use_class_code_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         runoff_coeff_land_use_class_code_field.parameterDependencies = [runoff_coeff_file_name.name]
 
-        # Slope Raster
         slope_file_name = arcpy.Parameter(
             displayName="Slope Raster Input",
             name="slope_file_name",
@@ -181,16 +171,15 @@ class RWSM_Toolbox(object):
             parameterType="Required",
             direction="Input")
 
-        # Soils Shapefile
         soils_file_name = arcpy.Parameter(
-            displayName="Soils Shapefile Input",
+            displayName="Soils Vector Layer Input",
             name="soils_file_name",
             datatype="GPFeatureLayer",
             parameterType="Required",
             direction="Input")
 
         soils_field = arcpy.Parameter(
-            displayName="Soils Group Field",
+            displayName="Soils Type Field",
             name="soils_field",
             datatype="Field",
             parameterType="Required",
@@ -204,7 +193,6 @@ class RWSM_Toolbox(object):
             parameterType="Required",
             direction="Input")
 
-        # Precipitation Raster
         precipitation_file_name = arcpy.Parameter(
             displayName="Precipitation Raster Input",
             name="precipitation_file_name",
@@ -219,37 +207,35 @@ class RWSM_Toolbox(object):
             parameterType="Required",
             direction="Input")
 
-        # TODO: Need to add logic check for ini file support
-        delete_temp = arcpy.Parameter(
-            displayName="Delete Temp Data",
-            name="delete_temp",
-            datatype="GPBoolean",
-            parameterType="Optional",
-            direction="Input",
-            enabled=0)
-        delete_temp.value = False
+        # delete_temp = arcpy.Parameter(
+        #     displayName="Delete Temp Data",
+        #     name="delete_temp",
+        #     datatype="GPBoolean",
+        #     parameterType="Optional",
+        #     direction="Input",
+        #     enabled=0)
+        # delete_temp.value = False
 
-        overwrite_config = arcpy.Parameter(
-            displayName="Overwrite Stored Defaults",
-            name="overwrite_config",
-            datatype="GPBoolean",
-            parameterType="Optional",
-            direction="Input",
-            enabled=0)
-        overwrite_config.value = False
+        # overwrite_config = arcpy.Parameter(
+        #     displayName="Overwrite Stored Defaults",
+        #     name="overwrite_config",
+        #     datatype="GPBoolean",
+        #     parameterType="Optional",
+        #     direction="Input",
+        #     enabled=0)
+        # overwrite_config.value = False
 
         params = [workspace,watersheds,watersheds_field,land_use,land_use_field,
             land_use_LU_file_name,land_use_LU_code_field,land_use_LU_bin_field,land_use_LU_desc_field, land_use_LU_class_field,
             runoff_coeff_file_name,runoff_coeff_field,runoff_coeff_slope_bin_field,runoff_coeff_soil_type_field,runoff_coeff_land_use_class_field,
-            runoff_coeff_land_use_class_code_field,slope_file_name,slope_bin_field,soils_file_name,soils_field,soils_bin_field,precipitation_file_name,out_name,
-            delete_temp,overwrite_config]
+            runoff_coeff_land_use_class_code_field,slope_file_name,slope_bin_field,soils_file_name,soils_field,soils_bin_field,precipitation_file_name,out_name]
 
-        # If present, populate input values from configuration file.
+        # If present, populate input values from configuration file. Assumes all fields present,
+        # will throw an error if a parameter is missing in ini file.
         if os.path.isfile(CONFIG_FILE_NAME):
             config = helpers.load_config(CONFIG_FILE_NAME)
             for param in params:
                 if param.datatype != "Boolean":
-                    # TODO: Add check to ensure file paths exist
                     param.value = config.get("RWSM", param.name)
 
         return params
@@ -264,11 +250,7 @@ class RWSM_Toolbox(object):
         has been changed."""
 
         # Validate parameters here
-
-        # Write values to config file if it doesn't exist
-        # TODO: Add checkbox to override existing configuration file.
-        # if not os.path.isfile("rwsm.ini"):
-        #     helpers.write_config(params)
+        # TODO: Add paramter validation in a future release.
 
         return
 
@@ -278,23 +260,14 @@ class RWSM_Toolbox(object):
 
         # Validation responses here
 
-        # Make sure watersheds file is a polygon
-        # watersheds = parameters[1]
-        # if watersheds.hasBeenValidated:
-        #     describe = arcpy.Describe(watersheds.value)
-        #     if describe.shapeType == u'Polygon':
-        #         # watersheds.setWarningMessage("Watersheds shapefile does not have polygon information," \
-        #         #     "please select a feature layer with polygons")
-        #         watersheds.setErrorMessage("Watersheds shapefile does not have polygon information," \
-        #             "please select a feature layer with polygons")
-        #     else:
-        #         watersheds.clearMessage()
+        # TODO: Add messages for parmaeter validadtion, in a future release.
 
         return
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
 
+        # Populate config object with GUI values
         config = helpers.get_empty_config()
         config.add_section("RWSM")
         config.set("RWSM", "workspace", parameters[0].valueAsText)

@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+
+"""helpers.py: Helper files for common tasks."""
+
+__copyright__ = "Copyright 2017, San Francisco Estuary Institute"
+
 import os
 import sys
 import csv
@@ -8,7 +14,9 @@ import datetime
 import logging
 import time
 
-LOG_LEVEL = logging.DEBUG  # Only show debug and up
+# Log levels are for debugging the application via Python command line,
+# which is outside the scope of this initial beta release.
+# LOG_LEVEL = logging.DEBUG  # Only show debug and up
 # LOG_LEVEL = logging.NOTSET # Show all messages
 # LOG_LEVEL = logging.CRITICAL # Only show critical messages
 
@@ -25,7 +33,6 @@ def get_logger( logger_level ):
     logger = logging.getLogger(__name__)
     return logger
 
-# TODO: Allow function to accept slope raster OR file name
 def load_slope_bins( config, get_dict=False ):
     """Populate slope bin list structure. Reteurn dictionary if specified."""
     runoff_coeff_file_name = config.get("RWSM","runoff_coeff_file_name")
@@ -241,54 +248,6 @@ def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None, co
                 row[fields.index(f) + 1] = joinDict[f].get(row[0], None)
             cursor.updateRow(row)
 
-def get_unique_field_vals(file_name,field):
-    """Get unique values for field in shapefile"""
-    values = [row[0] for row in arcpy.da.SearchCursor(file_name, (field))]
-    unique_values = list(set(values))
-
-    return unique_values
-
-def compare_unique_field_vals(file_name1,field1,file_name2,field2):
-    """Display intersection and difference for two sets"""
-    set_1 = get_unique_field_vals(file_name1,field1)
-    set_2 = get_unique_field_vals(file_name2,field2)
-
-    print "{} intersected with {}".format(file_name1,file_name2)
-    set_intersection = set(set_1).intersection(set_2)
-    for val in set_intersection:
-        print val
-    print "------------------------"
-    print "Total: {}\n\n".format(len(set_intersection))
-
-    print "{} - {}".format(file_name1,file_name2)
-    set_difference = set(set_1).difference(set_2)
-    for val in set_difference:
-        print val
-    print "------------------------"
-    print "Total: {}\n\n".format(len(set_difference))
-
-def add_descriptions_to_land_use_shp(lu_file_name,lu_field,shp_file_name):
-    """Function for adding land use description field to shape file."""
-    
-    # Read in lookup table, create dictionary
-    land_use_LU = {}
-    with open(lu_file_name,'rb') as csvfile:
-        reader = csv.reader(csvfile)
-        for row in reader:
-            if row[3] not in land_use_LU.keys():
-                land_use_LU[ row[3] ] = row[4]
-
-    # create UpdateCursor instance, append lookup desscription as l_use_desc field based on l_use_code value found.
-    arcpy.AddField_management(shp_file_name, "l_use_desc", "TEXT")
-    with arcpy.da.UpdateCursor(shp_file_name, ["l_use_code","l_use_desc"]) as cursor:
-        for row in cursor:
-            row[1] = land_use_LU[str(row[0])]
-            # print row
-            
-            # Add try / catch to identify which rows are not updated.
-
-            # cursor.updateRow(row)
-
 def elimSmallPolys(fc, outName, clusTol):
     """Runs Eliminate on all features in fc with area less than clusTol.
     This merges all small features to larger adjacent features."""
@@ -299,8 +258,8 @@ def elimSmallPolys(fc, outName, clusTol):
     return out
 
 def rasterAvgs(INT, dem, rname, wname):
+    """Uses arcpy Spatial Analysi package to calculate raster averages"""
     arcpy.CheckOutExtension('Spatial')
-    #zstatdem = ZonalStatisticsAsTable(INT, 'uID', dem, rname + "_" + wname, "TRUE", "MEAN")
     zstatdem = arcpy.sa.ZonalStatisticsAsTable(INT, 'uID', dem, rname + "_" + wname, "DATA", "MEAN")
     meanField = rname + "_mean"
     fasterJoin(INT, 'uID', zstatdem, 'uID', ("MEAN",), (meanField,))
@@ -318,15 +277,10 @@ def rasterAvgs(INT, dem, rname, wname):
 def getCountInt(fc):
     return int(arcpy.GetCount_management(fc).getOutput(0))
 
-# TODO: This will be phased out once land use lookups are indexed by tuples
 def calculateCode(slpValue, geolValue, luValue, geolName):
     """Calculates code for each unique land unit, used in runoff coeff lookup table"""
 
     geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
-    # if geolName == 'geol':
-    #     geolValues = {'Franciscan': 10, 'Great Valley': 20, 'Quaternary': 30, 'Salinian': 40, 'Tertiary': 50, 'Water': 60}
-    # elif geolName == 'soils':
-    #     geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40, 'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
 
     if geolValue in geolValues:
         geolValueOut = geolValues[geolValue]
@@ -336,12 +290,11 @@ def calculateCode(slpValue, geolValue, luValue, geolName):
         slpValue = 0
     if not luValue:
         luValue = 0.0
-    #else:
-        #luValue = float(str(luValue)[0] + '.' + str(luValue)[1:])  # convert luValue to decimal with highest digit as ones place
+
     return slpValue + geolValueOut + luValue
 
-# Define function to format time to a legible string
 def format_time(t):
+    """Date formatting for arcpy message output"""
     return str(datetime.timedelta(seconds=round(time.clock() - t)))
 
 def get_code_to_coeff_lookup(config):
