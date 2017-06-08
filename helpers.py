@@ -160,7 +160,7 @@ def init_workspace( workspace ):
     """Initialize workspace for writing temporary and output files."""
 
     # Initialize logger for output.
-    logger = get_logger( LOG_LEVEL )
+    # logger = get_logger( LOG_LEVEL )
 
     # TODO: Read from configuration file.
     create_new_folder = True
