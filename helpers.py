@@ -173,7 +173,6 @@ def init_workspace( workspace ):
     if create_new_folder:
         workspace += '_{}_{}'.format( date, time)
         if not os.path.exists(workspace):
-            logger.info( "Creating RWSM temp and output directory in workspace '{}'...".format(workspace) )
             os.makedirs( workspace )
 
     # Initiate workspace using output folder name.
@@ -184,13 +183,9 @@ def init_workspace( workspace ):
     temp_file_name = 'temp_{}_{}.gdb'.format(date, time)
     out_file_name = 'output_{}_{}.gdb'.format(date,time)
 
-    logger.info( 'Creating {}...'.format( temp_file_name ) )
     arcpy.CreateFileGDB_management( workspace, temp_file_name )
-    logger.info( '{} created!'.format( temp_file_name ) )
     
-    logger.info( 'Creating {}'.format( out_file_name ) )
     arcpy.CreateFileGDB_management( workspace, out_file_name )
-    logger.info( '{} created!'.format( out_file_name ) )
 
     return (temp_file_name,out_file_name,workspace)
 
