@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""rwsm.py: Primary RWSM analysis code."""
+"""rwsm.py: Primary RWSM (Beta) analysis code."""
 
 __copyright__ = "Copyright 2017, San Francisco Estuary Institute"
 
