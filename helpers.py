@@ -22,7 +22,16 @@ import time
 
 
 def strip_chars(watershed_name, strip_set):
-    """Strips illegal characters from watershed name"""
+    """Strips illegal characters from watershed name
+    
+    Arguments:
+        watershed_name {string} -- name for the watershed of interest, should avoid numeric as first character
+        strip_set {string} -- characters to remove from watershed name
+    
+    Returns:
+        string -- watershed name with characters from strip_set removed
+    """
+
     watershed_name_tmp = ''.join(watershed_name.split())
     for char in strip_set:
         watershed_name_tmp = watershed_name_tmp.replace(char, '')
@@ -30,13 +39,33 @@ def strip_chars(watershed_name, strip_set):
 
 
 def get_logger(logger_level):
+    """Initialize a logger instance
+    
+    Arguments:
+        logger_level {level} -- enumerated, numeric value corresponding to logging level
+    
+    Returns:
+        instance -- instance of python logger
+    """
+    
     logging.basicConfig(level=logger_level)
     logger = logging.getLogger(__name__)
     return logger
 
 
 def load_slope_bins(config, get_dict=False):
-    """Populate slope bin list structure. Reteurn dictionary if specified."""
+    """Populate slope bin list structure. Reteurn dictionary if specified.
+    
+    Arguments:
+        config {instance} -- ConfigParser instance holding RWSM parameters
+    
+    Keyword Arguments:
+        get_dict {bool} -- Choose to return a dictionary of slope values, default is a list (default: {False})
+    
+    Returns:
+        dictionary or list -- slope bins contained within a dictionary or list
+    """
+
     runoff_coeff_file_name = config.get("RWSM", "runoff_coeff_file_name")
     slope_file_name = config.get("RWSM", "slope_file_name")
     slope_bin_field = config.get("RWSM", "runoff_coeff_slope_bin_field")
@@ -82,7 +111,15 @@ def load_slope_bins(config, get_dict=False):
 
 
 def load_land_use_table(config):
-    """Load unique sets of land use codes, land use descriptions, and classifications"""
+    """Load unique sets of land use codes, land use descriptions, and classifications
+    
+    Arguments:
+        config {instance} -- ConfigParser instance containing RWSM parameters
+    
+    Returns:
+        list -- list of triplets containing each observed code, description and classification combination
+    """
+
 
     # Gather relevant parameter values
     file_name = config.get("RWSM", "land_use_LU_file_name")
@@ -111,7 +148,17 @@ def load_land_use_table(config):
 
 # TODO: Check if we want to dynamically apply coefficient fields based on location category
 def load_runoff_coeff_lu(file_name, coefficient_field):
-    """Helper function for populating land use data structure"""
+    """Helper function for populating land use data structure
+    
+    Arguments:
+        file_name {string} -- path to runoff coefficient file
+        coefficient_field {string} -- field name for column containing runoff coefficients
+    
+    Returns:
+        dictionary -- dictionary containing two dictionaries; dict of triplets for each set of runoff parameters
+            (i.e. slope, soil, category) assigned to coefficients, dict for converting codes to coefficients.
+    """
+
 
     # Initialize data structure, dictionary with three valued tuples
     runoff_lu = {
@@ -140,12 +187,27 @@ def load_runoff_coeff_lu(file_name, coefficient_field):
 
 
 def load_config(file_name):
+    """Instantiate and return ConfigParser instance containing RWSM parameters
+    
+    Arguments:
+        file_name {string} -- path to configuration file
+    
+    Returns:
+        instance -- ConfigParser instance containing RWSM parameters
+    """
+
     config = ConfigParser.ConfigParser()
     config.readfp(open(file_name))
     return config
 
 
 def get_empty_config():
+    """Instantiate blank ConfigParser instance
+    
+    Returns:
+        instance -- blank ConfigParser instance
+    """
+
     config = ConfigParser.ConfigParser()
     return config
 
@@ -153,6 +215,13 @@ def get_empty_config():
 
 
 def write_config(file_name, params):
+    """Writes config instance to file for future use.
+    
+    Arguments:
+        file_name {string} -- path for output file
+        params {list} -- list of arcpy parameter instances, object obtained from GUI
+    """
+
     config = ConfigParser.RawConfigParser()
 
     config.add_section("RWSM")
@@ -162,20 +231,29 @@ def write_config(file_name, params):
 
 
 def load_csv(file_name):
+    """Read in CSV file
+    
+    Arguments:
+        file_name {string} -- path to CSV file
+    
+    Returns:
+        list -- list from CSV reader
+    """
+
     with open(file_name, "r") as csv_file:
         reader = csv.reader(csv_file, delimiter=",")
         return list(reader)
 
 
-def unique_field_values(file_name, field_name):
-    return true
-
-
 def init_workspace(workspace):
-    """Initialize workspace for writing temporary and output files."""
-
-    # Initialize logger for output.
-    # logger = get_logger( LOG_LEVEL )
+    """Initialize workspace for writing temporary and output files.
+    
+    Arguments:
+        workspace {string} -- path to folder for writing temporary and output files
+    
+    Returns:
+        tuple -- tuple of strings containing temporary, output, and workspace paths
+    """
 
     # TODO: Read from configuration file.
     create_new_folder = True
@@ -206,6 +284,21 @@ def init_workspace(workspace):
 
 
 def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None, convertCodes=False):
+    """Custom function for joining feature class data sets, originally written by Marshall
+    
+    Arguments:
+        fc {feature class} -- feature class to be updated
+        fcField {string} -- feature class field for identifying related records in joinFC
+        joinFC {feature class} -- feature class to join
+        joinFCField {string} -- feature class field for identifying related records in fc
+        fields {list} -- list of fields to add to fc from joinFC
+    
+    Keyword Arguments:
+        fieldsNewNames {list} -- list of new names for fields being added (default: {None})
+        convertCodes {bool} -- flag for converting codes to float values, required for some 
+            operations (default: {False})
+    """
+
     # Create joinList, which is a list of [name, type] for input fields
     listfields = arcpy.ListFields(joinFC)
     joinList = [[k.name, k.type] for k in listfields if k.name in fields]
@@ -260,7 +353,17 @@ def fasterJoin(fc, fcField, joinFC, joinFCField, fields, fieldsNewNames=None, co
 
 def elimSmallPolys(fc, outName, clusTol):
     """Runs Eliminate on all features in fc with area less than clusTol.
-    This merges all small features to larger adjacent features."""
+        This merges all small features to larger adjacent features.
+    
+    Arguments:
+        fc {feature class} -- feature class to run operation over
+        outName {feature class} -- reference to feature class
+        clusTol {float} -- custer tolerance for specifying minimum shape area
+    
+    Returns:
+        feature class -- reference to feature class that has had eliminate management run
+    """
+
     lyr = arcpy.MakeFeatureLayer_management(fc)
     arcpy.SelectLayerByAttribute_management(
         lyr, "NEW_SELECTION", '"Shape_Area" < ' + str(clusTol))
@@ -270,7 +373,15 @@ def elimSmallPolys(fc, outName, clusTol):
 
 
 def rasterAvgs(INT, dem, rname, wname):
-    """Uses arcpy Spatial Analysi package to calculate raster averages"""
+    """Uses arcpy Spatial Analysis package to calculate raster averages
+    
+    Arguments:
+        INT {feature layer} -- intersected feature layer
+        dem {raster layer} -- slope or precipitation raster layer
+        rname {string} -- 'slope' or 'precipitation', prepended to watershed name
+        wname {string} -- watershed name
+    """
+
     arcpy.CheckOutExtension('Spatial')
     zstatdem = arcpy.sa.ZonalStatisticsAsTable(
         INT, 'uID', dem, rname + "_" + wname, "DATA", "MEAN")
@@ -293,11 +404,31 @@ def rasterAvgs(INT, dem, rname, wname):
 
 
 def getCountInt(fc):
+    """Returns number of rows within feature class
+    
+    Arguments:
+        fc {feature class} -- feature class to obtain row count
+    
+    Returns:
+        int -- number of rows within feature class
+    """
+
     return int(arcpy.GetCount_management(fc).getOutput(0))
 
 
 def calculateCode(slpValue, geolValue, luValue, geolName):
-    """Calculates code for each unique land unit, used in runoff coeff lookup table"""
+    """Calculates code for each unique land unit, used in runoff coeff lookup table
+    
+    Arguments:
+        slpValue {string} -- slope bin value
+        geolValue {string} -- geologic bin value (e.g. soils bin value)
+        luValue {float} -- land use lookup value
+        geolName {string} -- field name for geologic values (e.g. soil)
+    
+    Returns:
+        float -- numeric code represneting combination of slope, geologic, and lookup values
+    """
+
 
     geolValues = {'A': 10, 'B': 20, 'C': 30, 'D': 40,
                   'ROCK': 50, 'UNCLASS': 60, 'WATER': 70}
@@ -315,12 +446,28 @@ def calculateCode(slpValue, geolValue, luValue, geolName):
 
 
 def format_time(t):
-    """Date formatting for arcpy message output"""
+    """Date formatting for arcpy message output
+    
+    Arguments:
+        t {time} -- time to format
+    
+    Returns:
+        string -- fomatted time for display within arcpy console output
+    """
+
     return str(datetime.timedelta(seconds=round(time.clock() - t)))
 
 
 def get_code_to_coeff_lookup(config):
-    """Obtain code to coefficient dictionary"""
+    """Obtain code to coefficient dictionary
+    
+    Arguments:
+        config {instance} -- ConfigParser instance containing RWSM parameters
+    
+    Returns:
+        dictionary -- dictionary for converting codes to coefficients.
+    """
+
 
     # Output data structure
     code_to_coeff_lookup = {}

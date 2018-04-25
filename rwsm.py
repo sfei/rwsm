@@ -23,9 +23,23 @@ import gc
 
 
 class Watersheds(object):
-    """Used to manage set of initial watersheds"""
+    """Used to manage set of initial watersheds
+    
+    Arguments:
+        object {object} -- Remenant of python 2.7, declares new-style class
+    
+    Returns:
+        Watersheds -- Instance of watersheds class
+    """
+
 
     def __init__(self, config):
+        """Class initialization
+        
+        Arguments:
+            config {instance} -- ConfigParser instance containing parameter values.
+        """
+
         self.is_dissolved = False
         self.config = config
         # self.file_name = config.get("RWSM", "watersheds_calibration")
@@ -34,7 +48,12 @@ class Watersheds(object):
         self.watershed_names = []
 
     def dissolve(self):
-        """Dissolve if necessary, otherwise return pre-dissolved watersheds"""
+        """Dissolve if necessary, otherwise return pre-dissolved watersheds
+        
+        Returns:
+            Feature Layer -- Dissolved feature layer
+        """
+
         if not self.is_dissolved:
             self.dissolved = arcpy.Dissolve_management(
                 in_features=self.file_name,
@@ -47,7 +66,12 @@ class Watersheds(object):
         return self.dissolved
 
     def get_names(self):
-        """Obtain set of watershed names from dissolved watershed feature class."""
+        """Obtain set of watershed names from dissolved watershed feature class.
+        
+        Returns:
+            list -- sorted list of watershed names
+        """
+
         if len(self.watershed_names) == 0:
             watersheds_field = self.config.get("RWSM", "watersheds_field")
             fc_table = arcpy.da.FeatureClassToNumPyArray(
@@ -63,9 +87,25 @@ class Watersheds(object):
 
 
 class Stats_Writer(object):
-    """Object for writing watershed statistics tables"""
+    """Object for writing watershed statistics tables
+    
+    Arguments:
+        object {object} -- Remenant of python 2.7, declares new-style class
+    
+    Returns:
+        Stats_Writer -- Stats_Writer instance
+    """
+
 
     def __init__(self, config, watershed_names, slope_bins):
+        """Class initialization function
+        
+        Arguments:
+            config {instance} -- ConfigParser instance
+            watershed_names {list} -- list of watershed names
+            slope_bins {list} -- list containing slope bins
+        """
+
         self.config = config
         self.slope_bins = self.slope_bins_to_strs(sorted(slope_bins))
         self.ws_stats = []
@@ -77,7 +117,12 @@ class Stats_Writer(object):
         self.lu_headers = self.get_lu_stats_headers()
 
     def init_lu_stats(self, watershed_names):
-        """Initializes land use statistics data structure"""
+        """Initializes land use statistics data structure
+        
+        Arguments:
+            watershed_names {list} -- sorted list of watershed names
+        """
+
 
         # Write headers to stats list
         header = []
@@ -99,13 +144,27 @@ class Stats_Writer(object):
             self.lu_stats.append(lu_row)
 
     def slope_bins_to_strs(self, slope_bins):
+        """Converts slope bin ranges into printable strings
+        
+        Arguments:
+            slope_bins {list} -- slope bins
+        
+        Returns:
+            list -- list of strings representing slope bins
+        """
+
         tmp = []
         for slope_bin in slope_bins:
             tmp.append(str(slope_bin[0]) + "-" + str(slope_bin[1]))
         return tmp
 
     def load_soil_and_land_use_values(self, config):
-        """Read in runoff coefficient table, generate list of values and headers for watershed stats."""
+        """Read in runoff coefficient table, generate list of values and headers for watershed stats.
+        
+        Arguments:
+            config {instance} -- ConfigParser instance holding parameters
+        """
+
         soil_types = []
         land_use_classes = []
 
@@ -134,7 +193,12 @@ class Stats_Writer(object):
         self.land_use_classes = sorted(land_use_classes)
 
     def get_ws_stats_headers(self):
-        """Header row for watershed statistics file"""
+        """Header row for watershed statistics file
+        
+        Returns:
+            list -- list of headers for writing to statistics CSV file
+        """
+
         ws_headers = []
         ws_headers.append("Watershed")
         ws_headers.append("Tot. Area (km2)")
@@ -164,7 +228,12 @@ class Stats_Writer(object):
         return ws_headers
 
     def get_lu_stats_headers(self):
-        """Headers for land use statistics file."""
+        """Headers for land use statistics file.
+        
+        Returns:
+            list -- list of headersf or writing to land use statistics CSV file
+        """
+
         lu_headers = []
         lu_headers.append("Land Use Code")
         lu_headers.append("Land Use Description")
@@ -174,7 +243,12 @@ class Stats_Writer(object):
         return lu_headers
 
     def add_fc_table(self, watershed):
-        """Add feature class data to values data structure"""
+        """Add feature class data to values data structure
+        
+        Arguments:
+            watershed {String} -- feature class for watershed
+        """
+
 
         # Watershed Stats Table ---------------------------------------------------
         intersect = watershed
@@ -301,7 +375,12 @@ class Stats_Writer(object):
         del fc_table
 
     def write_ws_stats_table(self, output_file_name):
-        """Write area, runoff, soil, slope, and land use statistics for each watershed"""
+        """Write area, runoff, soil, slope, and land use statistics for each watershed
+        
+        Arguments:
+            output_file_name {String} -- File name for writing watershed statistics information as CSV
+        """
+
         with open(output_file_name, "wb") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(self.ws_headers)
@@ -309,21 +388,37 @@ class Stats_Writer(object):
                 writer.writerow(row)
 
     def write_lu_stats_table(self, output_file_name):
-        """Writes land use area percentages for each land use class / watershed combination"""
+        """Writes land use area percentages for each land use class / watershed combination
+        
+        Arguments:
+            output_file_name {String} -- File name for writing land use statistics information as CSV
+        """
+
         with open(output_file_name, "wb") as csvfile:
             writer = csv.writer(csvfile)
             for row in self.lu_stats:
                 writer.writerow(row)
 
     def write_stats_tables(intersected_watersheds):
-        """Given a list of tuples containing watershed names and refereces, outputs stats tables"""
+        """Given a list of tuples containing watershed names and refereces, outputs stats tables
+        
+        Arguments:
+            intersected_watersheds {list} -- list of intersected watersheds 
+        """
+
         intersected_watersheds.append((watershed_name, intersect))
         for (watershed_name, intersect) in intersected_watersheds:
             writer.add_fc_table(watershed_name, intersect)
 
 
 def run_analysis(config=None, is_gui=False):
-    """Primary RWSM analysis loop"""
+    """Primary RWSM analysis loop
+    
+    Keyword Arguments:
+        config {instance} -- ConfigParser instance holding parameter values (default: {None})
+        is_gui {bool} -- indicates if running from ArcMap toolbox GUI (default: {False})
+    """
+
 
     # Logger used for command line debugging, not supported in beta.
     # logger = helpers.get_logger(LOG_LEVEL)
