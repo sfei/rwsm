@@ -251,7 +251,9 @@ class RWSM_Toolbox(object):
             config = helpers.load_config(CONFIG_FILE_NAME)
             for param in params:
                 if param.datatype != "Boolean":
-                    param.value = config.get("RWSM", param.name)
+                    if param.name != "slope_bin_field":
+                        if param.name != "soils_bin_field"
+                            param.value = config.get("RWSM", param.name)
 
         return params
 
