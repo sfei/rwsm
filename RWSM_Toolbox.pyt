@@ -27,7 +27,7 @@ class Toolbox(object):
 class RWSM_Toolbox(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "RWSM Hydrology Analysis (Beta)"
+        self.label = "RWSM Hydrology Analysis"
         self.description = ""
         self.canRunInBackground = False
 
@@ -49,7 +49,7 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         watersheds_field = arcpy.Parameter(
-            displayName="Watershed name field",
+            displayName="Watershed name field (from Watersheds feature class)",
             name="watersheds_field",
             datatype="Field",
             parameterType="Required",
@@ -64,7 +64,7 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         land_use_field = arcpy.Parameter(
-            displayName="Land use code field",
+            displayName="Land use code field (from Land Use feature class)",
             name="land_use_field",
             datatype="Field",
             parameterType="Required",
@@ -79,7 +79,7 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         land_use_LU_code_field = arcpy.Parameter(
-            displayName="Land use code field",
+            displayName="Land use code field (from Land Use CSV)",
             name="land_use_LU_code_field",
             datatype="Field",
             parameterType="Required",
@@ -88,7 +88,7 @@ class RWSM_Toolbox(object):
             land_use_LU_file_name.name]
 
         land_use_LU_bin_field = arcpy.Parameter(
-            displayName="Land use classification code field",
+            displayName="Land use classification code field (from Land Use CSV)",
             name="land_use_LU_bin_field",
             datatype="Field",
             parameterType="Required",
@@ -97,7 +97,7 @@ class RWSM_Toolbox(object):
             land_use_LU_file_name.name]
 
         land_use_LU_desc_field = arcpy.Parameter(
-            displayName="Land use description field",
+            displayName="Land use description field (from Land Use CSV)",
             name="land_use_LU_desc_field",
             datatype="Field",
             parameterType="Required",
@@ -106,7 +106,7 @@ class RWSM_Toolbox(object):
             land_use_LU_file_name.name]
 
         land_use_LU_class_field = arcpy.Parameter(
-            displayName="Land use classification field",
+            displayName="Land use classification field (from Land Use CSV)",
             name="land_use_LU_class_field",
             datatype="Field",
             parameterType="Required",
@@ -122,7 +122,7 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         runoff_coeff_field = arcpy.Parameter(
-            displayName="Runoff coefficient field",
+            displayName="Runoff coefficient field (from Runoff Coefficient CSV)",
             name="runoff_coeff_field",
             datatype="Field",
             parameterType="Required",
@@ -131,7 +131,7 @@ class RWSM_Toolbox(object):
             runoff_coeff_file_name.name]
 
         runoff_coeff_slope_bin_field = arcpy.Parameter(
-            displayName="Slope bin field",
+            displayName="Slope bin field (from Runoff Coefficient CSV)",
             name="runoff_coeff_slope_bin_field",
             datatype="Field",
             parameterType="Required",
@@ -140,7 +140,7 @@ class RWSM_Toolbox(object):
             runoff_coeff_file_name.name]
 
         runoff_coeff_soil_type_field = arcpy.Parameter(
-            displayName="Soil type field",
+            displayName="Soil type field (from Runoff Coefficient CSV)",
             name="runoff_coeff_soil_type_field",
             datatype="Field",
             parameterType="Required",
@@ -149,7 +149,7 @@ class RWSM_Toolbox(object):
             runoff_coeff_file_name.name]
 
         runoff_coeff_land_use_class_field = arcpy.Parameter(
-            displayName="Land use classification field",
+            displayName="Land use classification field (from Runoff Coefficient CSV)",
             name="runoff_coeff_land_use_class_field",
             datatype="Field",
             parameterType="Required",
@@ -158,7 +158,7 @@ class RWSM_Toolbox(object):
             runoff_coeff_file_name.name]
 
         runoff_coeff_land_use_class_code_field = arcpy.Parameter(
-            displayName="Land use classification code field",
+            displayName="Land use classification code field (from Runoff Coefficient CSV)",
             name="runoff_coeff_land_use_class_code_field",
             datatype="Field",
             parameterType="Required",
@@ -173,12 +173,13 @@ class RWSM_Toolbox(object):
             parameterType="Required",
             direction="Input")
 
-        slope_bin_field = arcpy.Parameter(
-            displayName="Slope bin field",
-            name="slope_bin_field",
-            datatype="GPString",
-            parameterType="Required",
-            direction="Input")
+        # slope_bin_field = arcpy.Parameter(
+        #     displayName="Slope bin field",
+        #     name="slope_bin_field",
+        #     datatype="GPString",
+        #     parameterType="Required",
+        #     direction="Input")
+        # slope_bin_field.value = "slope_bin"
 
         soils_file_name = arcpy.Parameter(
             displayName="Soils - feature class",
@@ -188,19 +189,20 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         soils_field = arcpy.Parameter(
-            displayName="Soils group field",
+            displayName="Soils group field (from Soils feature class)",
             name="soils_field",
             datatype="Field",
             parameterType="Required",
             direction="Input")
         soils_field.parameterDependencies = [soils_file_name.name]
 
-        soils_bin_field = arcpy.Parameter(
-            displayName="Soils bin field",
-            name="soils_bin_field",
-            datatype="GPString",
-            parameterType="Required",
-            direction="Input")
+        # soils_bin_field = arcpy.Parameter(
+        #     displayName="Soils bin field",
+        #     name="soils_bin_field",
+        #     datatype="GPString",
+        #     parameterType="Required",
+        #     direction="Input")
+        # soils_bin_field.value = "soils_bin"
 
         precipitation_file_name = arcpy.Parameter(
             displayName="Precipitation - raster",
@@ -210,7 +212,7 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         out_name = arcpy.Parameter(
-            displayName="Output file name",
+            displayName="Output file name (user defined",
             name="out_name",
             datatype="GPString",
             parameterType="Required",
@@ -234,10 +236,14 @@ class RWSM_Toolbox(object):
         #     enabled=0)
         # overwrite_config.value = False
 
+        # params = [workspace, watersheds, watersheds_field, land_use, land_use_field,
+        #           land_use_LU_file_name, land_use_LU_code_field, land_use_LU_bin_field, land_use_LU_desc_field, land_use_LU_class_field,
+        #           runoff_coeff_file_name, runoff_coeff_field, runoff_coeff_slope_bin_field, runoff_coeff_soil_type_field, runoff_coeff_land_use_class_field,
+        #           runoff_coeff_land_use_class_code_field, slope_file_name, slope_bin_field, soils_file_name, soils_field, soils_bin_field, precipitation_file_name, out_name]
         params = [workspace, watersheds, watersheds_field, land_use, land_use_field,
                   land_use_LU_file_name, land_use_LU_code_field, land_use_LU_bin_field, land_use_LU_desc_field, land_use_LU_class_field,
                   runoff_coeff_file_name, runoff_coeff_field, runoff_coeff_slope_bin_field, runoff_coeff_soil_type_field, runoff_coeff_land_use_class_field,
-                  runoff_coeff_land_use_class_code_field, slope_file_name, slope_bin_field, soils_file_name, soils_field, soils_bin_field, precipitation_file_name, out_name]
+                  runoff_coeff_land_use_class_code_field, slope_file_name, soils_file_name, soils_field, precipitation_file_name, out_name]
 
         # If present, populate input values from configuration file. Assumes all fields present,
         # will throw an error if a parameter is missing in ini file.
@@ -302,13 +308,15 @@ class RWSM_Toolbox(object):
         config.set("RWSM", "runoff_coeff_land_use_class_code_field",
                    parameters[15].valueAsText)
         config.set("RWSM", "slope_file_name", parameters[16].valueAsText)
-        config.set("RWSM", "slope_bin_field", parameters[17].valueAsText)
-        config.set("RWSM", "soils_file_name", parameters[18].valueAsText)
-        config.set("RWSM", "soils_field", parameters[19].valueAsText)
-        config.set("RWSM", "soils_bin_field", parameters[20].valueAsText)
+        # config.set("RWSM", "slope_bin_field", parameters[17].valueAsText)
+        config.set("RWSM", "slope_bin_field", "slope_bin")
+        config.set("RWSM", "soils_file_name", parameters[17].valueAsText)
+        config.set("RWSM", "soils_field", parameters[18].valueAsText)
+        # config.set("RWSM", "soils_bin_field", parameters[20].valueAsText)
+        config.set("RWSM", "soils_bin_field", "soils_bin")
         config.set("RWSM", "precipitation_file_name",
-                   parameters[21].valueAsText)
-        config.set("RWSM", "out_name", parameters[22].valueAsText)
+                   parameters[19].valueAsText)
+        config.set("RWSM", "out_name", parameters[20].valueAsText)
         # config.set("RWSM", "delete_temp", parameters[22].valueAsText)
         # config.set("RWSM", "overwrite_config", parameters[23].valueAsText)
 
