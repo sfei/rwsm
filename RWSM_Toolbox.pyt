@@ -212,7 +212,7 @@ class RWSM_Toolbox(object):
             direction="Input")
 
         out_name = arcpy.Parameter(
-            displayName="Output file name (user defined",
+            displayName="Output file name (user defined)",
             name="out_name",
             datatype="GPString",
             parameterType="Required",
