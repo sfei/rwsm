@@ -1,8 +1,23 @@
 #!/usr/bin/env python
 
-"""rwsm.py: Primary RWSM (Beta) analysis code."""
+"""rwsm.py: Primary RWSM analysis code."""
 
-__copyright__ = "Copyright 2017, San Francisco Estuary Institute"
+__copyright__ = """
+    Copyright (C) 2018 San Francisco Estuary Institute (SFEI)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 import os
 import sys
