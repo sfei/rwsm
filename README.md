@@ -8,11 +8,11 @@ Instructions below are a basic overview of the steps required to get started wit
 
 ### Prerequisites
 
-This code-base has been tested with ArcMap verison 10.5.1 and requires a valid Spatial Analyst package license.
+This code-base has been tested with ArcMap version 10.5.1 and requires a valid Spatial Analyst package license.
 
 ### Installing and Running
 
-1. Download the source code to your computer and unpackage into a local directory.
+1. Download the source code to your computer and unpack into a local directory.
 2. Open ArcMap and navigate to the Catalog interface.
     * You may have to use the Catalog's "Connect to Folder" feature to access the toolbox.
 3. Browse to the toolbox file path, double click RWSM_Toolbox.pyt.
@@ -27,7 +27,7 @@ After running the RWSM tool, you can view runoff load statistics, output shapefi
 
 ## Authors
 
-* Lorenzo T. FLores
+* Lorenzo T. Flores
 * Marshall Kunze
 
 ## License
@@ -37,4 +37,3 @@ This project is licensed under the GNU Lesser General Public License - see the L
 ## Acknowledgments
 
 * Alicia Gilbreath for reviewing RWSM protocol and leading discussions regarding protocol.
-
